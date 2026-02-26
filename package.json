@@ -1,0 +1,23 @@
+{
+  "name": "matcraft-launcher",
+  "version": "1.0.0",
+  "description": "Custom launcher for MatCraft Minecraft server",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently -k \"cd renderer && npm run dev\" \"wait-on http://localhost:5173 && electron . --dev\"",
+    "build": "cd renderer && npm run build",
+    "postinstall": "cd renderer && npm install"
+  },
+  "author": "MatCraft",
+  "license": "MIT",
+  "dependencies": {
+    "azuriom-auth": "^1.0.1",
+    "electron": "^40.6.0",
+    "minecraft-java-core": "^4.2.6"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "wait-on": "^8.0.5"
+  }
+}

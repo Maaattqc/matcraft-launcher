@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MatCraft — Connexion</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="bg-minecraft"></div>
+
+    <div class="titlebar">
+        <span class="titlebar-title">MatCraft Launcher</span>
+        <div class="titlebar-controls">
+            <button class="titlebar-btn" id="btn-minimize">&#x2013;</button>
+            <button class="titlebar-btn titlebar-close" id="btn-close">&#x2715;</button>
+        </div>
+    </div>
+
+    <div class="container login-container">
+        <div class="login-box mc-panel">
+            <h1 class="logo-text">MatCraft</h1>
+            <p class="subtitle">Connectez-vous pour jouer</p>
+
+            <form id="login-form" autocomplete="off">
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="votre@email.com" value="mathfou@outlook.fr" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" placeholder="Mot de passe" value="superadminsuperadmin123$$" required>
+                </div>
+                <div id="login-error" class="error-msg hidden"></div>
+                <button type="submit" id="login-btn" class="btn-primary">Se connecter</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/login.js"></script>
+</body>
+</html>

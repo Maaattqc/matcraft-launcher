@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MatCraft — Launcher</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="bg-minecraft"></div>
+
+    <div class="titlebar">
+        <span class="titlebar-title">MatCraft Launcher</span>
+        <div class="titlebar-controls">
+            <button class="titlebar-btn" id="btn-minimize">&#x2013;</button>
+            <button class="titlebar-btn titlebar-close" id="btn-close">&#x2715;</button>
+        </div>
+    </div>
+
+    <div class="container app-container">
+        <div class="app-card mc-panel">
+            <h2 class="logo-text">MatCraft</h2>
+            <p class="welcome">Bienvenue, <span id="username">Joueur</span></p>
+
+            <button id="play-btn" class="btn-play">JOUER</button>
+
+            <div id="progress-section" class="progress-section hidden">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-info">
+                    <span id="progress-text">Préparation...</span>
+                    <span id="progress-speed"></span>
+                </div>
+            </div>
+
+            <div id="status-text" class="status-text">Prêt à jouer</div>
+
+            <!-- Info Cards -->
+            <div class="info-cards">
+                <div class="info-card card-news">
+                    <div class="info-card-icon">&#x1F4E2;</div>
+                    <div class="info-card-title">News</div>
+                    <div class="info-card-content">
+                        <p class="news-item">Saison 2 disponible !</p>
+                        <p class="news-date">Mise a jour v1.2</p>
+                    </div>
+                    <div class="info-card-glow"></div>
+                </div>
+
+                <div class="info-card card-discord">
+                    <div class="info-card-icon">&#x1F3AE;</div>
+                    <div class="info-card-title">Discord</div>
+                    <div class="info-card-content">
+                        <p class="discord-status">&#x25CF; En ligne</p>
+                        <p class="discord-count">42 joueurs</p>
+                    </div>
+                    <div class="info-card-glow"></div>
+                </div>
+
+                <div class="info-card card-server">
+                    <div class="info-card-icon">&#x2699;</div>
+                    <div class="info-card-title">Serveur</div>
+                    <div class="info-card-content">
+                        <p class="server-status">&#x25CF; Online</p>
+                        <p class="server-version">MC 1.21.1</p>
+                    </div>
+                    <div class="info-card-glow"></div>
+                </div>
+            </div>
+
+            <div class="bottom-bar">
+                <div class="settings-inline">
+                    <div class="input-group">
+                        <label for="min-ram">RAM Min</label>
+                        <select id="min-ram">
+                            <option value="1G">1 Go</option>
+                            <option value="2G" selected>2 Go</option>
+                            <option value="3G">3 Go</option>
+                            <option value="4G">4 Go</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="max-ram">RAM Max</label>
+                        <select id="max-ram">
+                            <option value="2G">2 Go</option>
+                            <option value="4G" selected>4 Go</option>
+                            <option value="6G">6 Go</option>
+                            <option value="8G">8 Go</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="logout-btn" class="btn-secondary">Deconnexion</button>
+            </div>
+
+            <div id="console-panel" class="console-panel hidden">
+                <div class="console-header">
+                    <span>Console</span>
+                    <button id="toggle-console" class="btn-small">Masquer</button>
+                </div>
+                <pre id="console-output"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
