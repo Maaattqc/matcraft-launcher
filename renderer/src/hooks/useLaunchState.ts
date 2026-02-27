@@ -51,13 +51,15 @@ export function reducer(state: LaunchState, action: LaunchAction): LaunchState {
     case 'START':
       return { ...initialState, phase: 'launching', statusText: 'Lancement en cours...' }
 
-    case 'PROGRESS':
+    case 'PROGRESS': {
+      const percent = action.size > 0 ? Math.min((action.progress / action.size) * 100, 100) : 0
       return {
         ...state,
         phase: 'downloading',
-        progress: action.progress,
-        statusText: `Téléchargement : ${action.element} (${Math.round(action.progress)}%)`,
+        progress: percent,
+        statusText: `Téléchargement : ${action.element} (${Math.round(percent)}%)`,
       }
+    }
 
     case 'SPEED':
       return { ...state, speed: action.speed }
