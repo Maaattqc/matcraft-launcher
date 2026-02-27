@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  build-win:
     runs-on: windows-latest
 
     steps:
@@ -31,21 +31,96 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: matcraft-release
+          name: release-win
           path: |
             dist/*.exe
             dist/latest.yml
             dist/*.blockmap
 
-  deploy:
-    needs: build
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer
+        run: npm run build:renderer
+
+      - name: Build Electron (macOS)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --mac
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mac
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/latest-mac.yml
+
+  build-linux:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download artifacts
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer
+        run: npm run build:renderer
+
+      - name: Build Electron (Linux)
+        run: npx electron-builder --linux
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: |
+            dist/*.AppImage
+            dist/latest-linux.yml
+
+  deploy:
+    needs: [build-win, build-mac, build-linux]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
-          name: matcraft-release
+          name: release-win
+          path: release
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-mac
+          path: release
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-linux
           path: release
 
       - name: Deploy to server via SCP
@@ -71,6 +146,6 @@ jobs:
             VERSION="${VERSION#v}"
             LAUNCHER_DIR="/home/debian/website/azuriom/public/launcher"
             echo "Keeping version $VERSION, removing old files..."
-            find "$LAUNCHER_DIR" -maxdepth 1 \( -name "*.exe" -o -name "*.blockmap" \) ! -name "*$VERSION*" -delete
+            find "$LAUNCHER_DIR" -maxdepth 1 \( -name "*.exe" -o -name "*.blockmap" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" \) ! -name "*$VERSION*" -delete
             echo "Remaining files:"
             ls -la "$LAUNCHER_DIR"
