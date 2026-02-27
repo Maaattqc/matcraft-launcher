@@ -226,7 +226,6 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         launcher.on('close', () => {
             gameClosed = true;
             gameRunning = false;
-            authenticatorData = null;
             mainWindow?.webContents.send('launch:close');
             if (tray) {
                 tray.destroy();
