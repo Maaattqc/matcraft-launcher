@@ -221,7 +221,10 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             mainWindow?.webContents.send('launch:data', String(line));
         });
 
+        let gameClosed = false;
+
         launcher.on('close', () => {
+            gameClosed = true;
             gameRunning = false;
             authenticatorData = null;
             mainWindow?.webContents.send('launch:close');
@@ -235,6 +238,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         });
 
         launcher.on('error', (err) => {
+            if (gameClosed) return;
             mainWindow?.webContents.send('launch:error', String(err).slice(0, 500));
         });
 
