@@ -1,6 +1,6 @@
 {
   "name": "matcraft-launcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Custom launcher for MatCraft Minecraft server",
   "main": "main.js",
   "scripts": {
