@@ -275,6 +275,7 @@ class DllGuardWorker
             try
             {
                 string pname = p.ProcessName.ToLower();
+                if (pname.Contains("nvidia")) continue;
                 foreach (string bl in BlacklistNames)
                 {
                     if (pname.Contains(bl))

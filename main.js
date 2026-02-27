@@ -4,13 +4,13 @@ const path = require('path');
 
 // Game modules are lazy-loaded so a missing/broken module doesn't prevent
 // the auto-updater from running (our recovery mechanism).
-let fs, Launch, AZauth, syncMods, createModsGuard, verifyFabricLoader, snapshotJavawPids, findNewPid, createDllGuard;
+let fs, Launch, AZauth, syncMods, createModsGuard, verifyFabricLoader, snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard;
 let modulesError = null;
 try {
     fs = require('fs');
     ({ Launch, AZauth } = require('minecraft-java-core'));
     ({ syncMods, createModsGuard, verifyFabricLoader } = require('./lib/syncMods'));
-    ({ snapshotJavawPids, findNewPid, createDllGuard } = require('./lib/dllGuard'));
+    ({ snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard } = require('./lib/dllGuard'));
 } catch (err) {
     modulesError = err.message;
     console.error('[init] Failed to load game modules:', err.message);
@@ -339,34 +339,40 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         // Verify Fabric loader libraries integrity
         await verifyFabricLoader(GAME_DIR);
 
-        // Snapshot javaw.exe PIDs before launch (Windows only)
+        // Snapshot java PIDs before launch (cross-platform)
         let pidsBefore = null;
-        if (process.platform === 'win32' && snapshotJavawPids) {
+        if (snapshotJavawPids) {
             pidsBefore = await snapshotJavawPids();
         }
 
         await launcher.Launch(launchOptions);
         gameRunning = true;
 
-        // Start DLL guard after launch (Windows only)
-        if (process.platform === 'win32' && pidsBefore && findNewPid && createDllGuard) {
+        // Start anti-cheat guard after launch
+        if (pidsBefore && findNewPid) {
+            const onViolation = (violation) => {
+                let message;
+                if (violation.startsWith('dll:')) {
+                    message = 'Un logiciel non autorisé a été détecté (injection DLL). Le jeu a été fermé.';
+                } else if (violation.startsWith('overlay:')) {
+                    message = 'Un overlay suspect a été détecté. Le jeu a été fermé.';
+                } else if (violation.startsWith('blacklist:')) {
+                    message = 'Un logiciel interdit a été détecté. Le jeu a été fermé.';
+                } else {
+                    message = 'Violation anti-triche détectée. Le jeu a été fermé.';
+                }
+                mainWindow?.webContents.send('launch:error', message);
+            };
+
             findNewPid(pidsBefore).then((pid) => {
                 if (!pid || !gameRunning) return;
-                dllGuard = createDllGuard(pid, {
-                    onViolation(violation) {
-                        let message;
-                        if (violation.startsWith('dll:')) {
-                            message = 'Un logiciel non autorisé a été détecté (injection DLL). Le jeu a été fermé.';
-                        } else if (violation.startsWith('overlay:')) {
-                            message = 'Un overlay suspect a été détecté. Le jeu a été fermé.';
-                        } else if (violation.startsWith('blacklist:')) {
-                            message = 'Un logiciel interdit a été détecté. Le jeu a été fermé.';
-                        } else {
-                            message = 'Violation anti-triche détectée. Le jeu a été fermé.';
-                        }
-                        mainWindow?.webContents.send('launch:error', message);
-                    }
-                });
+                if (process.platform === 'win32' && createDllGuard) {
+                    // Windows: full guard (DLL + overlay + blacklist via .exe worker)
+                    dllGuard = createDllGuard(pid, { onViolation });
+                } else if (createBlacklistGuard) {
+                    // macOS/Linux: blacklist-only guard (native JS)
+                    dllGuard = createBlacklistGuard(pid, { onViolation });
+                }
             }).catch(() => {});
         }
 
