@@ -11,7 +11,7 @@ export function NewsCard() {
       {/* Info */}
       <div className="p-3">
         <p className="text-xs font-bold text-white uppercase tracking-wider">Bienvenue sur MatCraft</p>
-        <p className="text-[11px] text-white/40 mt-0.5">Serveur Faction PvP</p>
+        <p className="text-[11px] text-white/40 mt-0.5">Survie & Mini-jeux</p>
       </div>
     </div>
   )

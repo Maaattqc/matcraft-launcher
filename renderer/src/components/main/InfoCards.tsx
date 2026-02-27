@@ -4,7 +4,7 @@ import { InfoCard } from './InfoCard'
 const cards = [
   {
     title: 'Actualités',
-    description: 'Dernières nouvelles du serveur',
+    description: 'Dernières nouvelles du network',
     icon: Newspaper,
     color: 'bg-amber-500/20',
     href: 'https://matfaction.com',
