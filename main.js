@@ -1,9 +1,21 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
-const fs = require('fs');
-const { Launch, AZauth } = require('minecraft-java-core');
-const { copyMod } = require('./lib/copyMod');
+
+// Game modules are lazy-loaded so a missing/broken module doesn't prevent
+// the auto-updater from running (our recovery mechanism).
+let fs, Launch, AZauth, copyMod;
+let modulesError = null;
+try {
+    fs = require('fs');
+    ({ Launch, AZauth } = require('minecraft-java-core'));
+    ({ copyMod } = require('./lib/copyMod'));
+} catch (err) {
+    modulesError = err.message;
+    console.error('[init] Failed to load game modules:', err.message);
+    // fs may still be needed for basic operations — try loading it alone
+    if (!fs) try { fs = require('fs'); } catch (_) {}
+}
 
 app.setName('MatCraft');
 
@@ -85,7 +97,12 @@ function setupAutoUpdater() {
 }
 
 app.whenReady().then(() => {
-    createWindow();
+    try {
+        createWindow();
+    } catch (err) {
+        console.error('[init] Window creation failed:', err.message);
+    }
+    // Auto-updater ALWAYS runs — it's the recovery mechanism
     setupAutoUpdater();
 });
 
@@ -137,6 +154,9 @@ ipcMain.on('window:resize-to-launcher', () => {
 
 // ── AzAuth Login ──
 ipcMain.handle('azauth:login', async (_event, email, password) => {
+    if (!AZauth) {
+        return { success: false, error: 'Module d\'authentification non disponible. Une mise à jour est peut-être en cours.' };
+    }
     if (typeof email !== 'string' || typeof password !== 'string') {
         return { success: false, error: 'Entrée invalide.' };
     }
@@ -177,6 +197,9 @@ ipcMain.handle('azauth:login', async (_event, email, password) => {
 
 // ── Minecraft Launch ──
 ipcMain.handle('minecraft:launch', async (_event, config) => {
+    if (!Launch || !copyMod || !fs) {
+        return { success: false, error: 'Modules de jeu non disponibles. Une mise à jour est peut-être en cours.' };
+    }
     const RAM_PATTERN = /^\d{1,5}[MG]$/;
     if (config.minRam && (typeof config.minRam !== 'string' || !RAM_PATTERN.test(config.minRam))) {
         return { success: false, error: 'Format de RAM invalide.' };
