@@ -4,12 +4,13 @@ const path = require('path');
 
 // Game modules are lazy-loaded so a missing/broken module doesn't prevent
 // the auto-updater from running (our recovery mechanism).
-let fs, Launch, AZauth, syncMods;
+let fs, Launch, AZauth, syncMods, createModsGuard, verifyFabricLoader, snapshotJavawPids, findNewPid, createDllGuard;
 let modulesError = null;
 try {
     fs = require('fs');
     ({ Launch, AZauth } = require('minecraft-java-core'));
-    ({ syncMods } = require('./lib/syncMods'));
+    ({ syncMods, createModsGuard, verifyFabricLoader } = require('./lib/syncMods'));
+    ({ snapshotJavawPids, findNewPid, createDllGuard } = require('./lib/dllGuard'));
 } catch (err) {
     modulesError = err.message;
     console.error('[init] Failed to load game modules:', err.message);
@@ -26,6 +27,8 @@ let launcher = null;
 let GAME_DIR = '';
 let authenticatorData = null;
 let gameRunning = false;
+let modsGuard = null;
+let dllGuard = null;
 let tray = null;
 
 function createWindow() {
@@ -194,7 +197,7 @@ ipcMain.handle('azauth:login', async (_event, email, password) => {
 
 // ── Minecraft Launch ──
 ipcMain.handle('minecraft:launch', async (_event, config) => {
-    if (!Launch || !syncMods || !fs) {
+    if (!Launch || !syncMods || !createModsGuard || !verifyFabricLoader || !fs) {
         return { success: false, error: 'Modules de jeu non disponibles. Une mise à jour est peut-être en cours.' };
     }
     const RAM_PATTERN = /^\d{1,5}[MG]$/;
@@ -216,7 +219,11 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         const sendSyncProgress = (phase, current, total, modName) => {
             mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName });
         };
-        await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
+        const allowedMods = await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
+
+        // Start watching the mods directory for unauthorized changes
+        const modsDir = path.join(GAME_DIR, 'mods');
+        modsGuard = createModsGuard(modsDir, allowedMods);
 
         launcher = new Launch();
 
@@ -250,6 +257,8 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         launcher.on('close', () => {
             gameClosed = true;
             gameRunning = false;
+            if (dllGuard) { dllGuard.stop(); dllGuard = null; }
+            if (modsGuard) { modsGuard.stop(); modsGuard = null; }
             mainWindow?.webContents.send('launch:close');
             if (tray) {
                 tray.destroy();
@@ -288,13 +297,59 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
                 'options.txt',
                 'servers.dat'
             ],
+            JVM_ARGS: [
+                '-XX:+DisableAttachMechanism'
+            ],
             downloadFileMultiple: 5
         };
 
+        // Final integrity check right before launching
+        await modsGuard.verify();
+
+        // Verify Fabric loader libraries integrity
+        await verifyFabricLoader(GAME_DIR);
+
+        // Snapshot javaw.exe PIDs before launch (Windows only)
+        let pidsBefore = null;
+        if (process.platform === 'win32' && snapshotJavawPids) {
+            pidsBefore = await snapshotJavawPids();
+        }
+
         await launcher.Launch(launchOptions);
         gameRunning = true;
+
+        // Start DLL guard after launch (Windows only)
+        if (process.platform === 'win32' && pidsBefore && findNewPid && createDllGuard) {
+            findNewPid(pidsBefore).then((pid) => {
+                if (!pid || !gameRunning) return;
+                dllGuard = createDllGuard(pid, {
+                    onViolation(violation) {
+                        let message;
+                        if (violation.startsWith('dll:')) {
+                            message = 'Un logiciel non autorisé a été détecté (injection DLL). Le jeu a été fermé.';
+                        } else if (violation.startsWith('overlay:')) {
+                            message = 'Un overlay suspect a été détecté. Le jeu a été fermé.';
+                        } else if (violation.startsWith('blacklist:')) {
+                            message = 'Un logiciel interdit a été détecté. Le jeu a été fermé.';
+                        } else {
+                            message = 'Violation anti-triche détectée. Le jeu a été fermé.';
+                        }
+                        mainWindow?.webContents.send('launch:error', message);
+                        console.log(`[dllGuard] Game killed — ${violation}`);
+                    },
+                    onLocked(count) {
+                        console.log(`[dllGuard] Monitoring active — ${count} modules whitelisted`);
+                    }
+                });
+            }).catch((err) => {
+                console.error('[dllGuard] Failed to start:', err.message);
+            });
+        }
+
         return { success: true };
     } catch (err) {
+        if (dllGuard) { dllGuard.stop(); dllGuard = null; }
+        if (modsGuard) { modsGuard.stop(); modsGuard = null; }
         return { success: false, error: err.message || 'Erreur lors du lancement.' };
     }
 });
