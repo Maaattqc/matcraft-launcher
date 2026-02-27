@@ -1,0 +1,32 @@
+name: Sync Mods Manifest
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate mods manifest on server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd /home/debian/website/azuriom/public/launcher/mods
+            python3 -c "
+            import os, hashlib, json
+            jars = sorted(f for f in os.listdir('.') if f.endswith('.jar'))
+            mods = []
+            for jar in jars:
+                h = hashlib.sha256(open(jar, 'rb').read()).hexdigest()
+                mods.append({'name': jar, 'sha256': h})
+            with open('manifest.json', 'w') as f:
+                json.dump({'mods': mods}, f, indent=2)
+            print(f'Generated manifest for {len(mods)} mods:')
+            for m in mods:
+                print(f'  {m[\"name\"]}')
+            "

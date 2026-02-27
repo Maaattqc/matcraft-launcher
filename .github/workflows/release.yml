@@ -100,45 +100,8 @@ jobs:
             dist/*.AppImage
             dist/latest-linux.yml
 
-  build-mods:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Generate mods manifest
-        run: |
-          node -e "
-          const fs = require('fs');
-          const path = require('path');
-          const crypto = require('crypto');
-          const modsDir = path.join(__dirname, 'mods');
-          if (!fs.existsSync(modsDir)) { console.log('No mods directory'); process.exit(0); }
-          const jars = fs.readdirSync(modsDir).filter(f => f.endsWith('.jar') && !f.includes('-sources'));
-          const mods = jars.map(name => {
-            const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(modsDir, name))).digest('hex');
-            return { name, sha256: hash };
-          });
-          fs.writeFileSync(path.join(modsDir, 'manifest.json'), JSON.stringify({ mods }, null, 2));
-          console.log('Generated manifest for', mods.length, 'mods:', JSON.stringify(mods, null, 2));
-          "
-
-      - name: Upload mods artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-mods
-          path: |
-            mods/*.jar
-            mods/manifest.json
-
   deploy:
-    needs: [build-win, build-mac, build-linux, build-mods]
+    needs: [build-win, build-mac, build-linux]
     runs-on: ubuntu-latest
 
     steps:
@@ -159,12 +122,6 @@ jobs:
         with:
           name: release-linux
           path: release
-
-      - name: Download mods artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: release-mods
-          path: release/mods
 
       - name: Deploy to server via SCP
         uses: appleboy/scp-action@v0.1.7
@@ -192,3 +149,26 @@ jobs:
             find "$LAUNCHER_DIR" -maxdepth 1 \( -name "*.exe" -o -name "*.blockmap" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" \) ! -name "*$VERSION*" -delete
             echo "Remaining files:"
             ls -la "$LAUNCHER_DIR"
+
+      - name: Generate mods manifest on server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd /home/debian/website/azuriom/public/launcher/mods
+            python3 -c "
+            import os, hashlib, json
+            jars = sorted(f for f in os.listdir('.') if f.endswith('.jar'))
+            mods = []
+            for jar in jars:
+                h = hashlib.sha256(open(jar, 'rb').read()).hexdigest()
+                mods.append({'name': jar, 'sha256': h})
+            with open('manifest.json', 'w') as f:
+                json.dump({'mods': mods}, f, indent=2)
+            print(f'Generated manifest for {len(mods)} mods:')
+            for m in mods:
+                print(f'  {m[\"name\"]}')
+            "
