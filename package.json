@@ -29,6 +29,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "lib/**/*",
       "renderer/dist/**/*",
       "src/icon.png",
       "mods/**/*"
