@@ -294,6 +294,11 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             ignored: [
                 'mods',
                 'config',
+                'saves',
+                'resourcepacks',
+                'shaderpacks',
+                'screenshots',
+                'logs',
                 'options.txt',
                 'servers.dat'
             ],
