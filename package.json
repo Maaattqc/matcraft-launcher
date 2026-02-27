@@ -17,6 +17,7 @@
   "author": "MatCraft",
   "license": "MIT",
   "build": {
+    "asar": true,
     "appId": "com.matcraft.launcher",
     "productName": "MatCraft",
     "directories": {

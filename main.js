@@ -30,7 +30,10 @@ function createWindow() {
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
-            nodeIntegration: false
+            nodeIntegration: false,
+            sandbox: true,
+            webSecurity: true,
+            allowRunningInsecureContent: false
         }
     });
 
@@ -115,6 +118,7 @@ ipcMain.on('window:close', () => {
             tray.on('double-click', () => { mainWindow?.show(); });
         }
     } else {
+        authenticatorData = null;
         mainWindow?.close();
     }
 });
@@ -133,6 +137,13 @@ ipcMain.on('window:resize-to-launcher', () => {
 
 // ── AzAuth Login ──
 ipcMain.handle('azauth:login', async (_event, email, password) => {
+    if (typeof email !== 'string' || typeof password !== 'string') {
+        return { success: false, error: 'Entrée invalide.' };
+    }
+    if (email.length > 254 || password.length > 128) {
+        return { success: false, error: 'Entrée trop longue.' };
+    }
+
     try {
         const azauth = new AZauth(AZAUTH_URL);
         const result = await azauth.login(email, password);
@@ -166,6 +177,14 @@ ipcMain.handle('azauth:login', async (_event, email, password) => {
 
 // ── Minecraft Launch ──
 ipcMain.handle('minecraft:launch', async (_event, config) => {
+    const RAM_PATTERN = /^\d{1,5}[MG]$/;
+    if (config.minRam && (typeof config.minRam !== 'string' || !RAM_PATTERN.test(config.minRam))) {
+        return { success: false, error: 'Format de RAM invalide.' };
+    }
+    if (config.maxRam && (typeof config.maxRam !== 'string' || !RAM_PATTERN.test(config.maxRam))) {
+        return { success: false, error: 'Format de RAM invalide.' };
+    }
+
     try {
         // Ensure game directory exists
         if (!fs.existsSync(GAME_DIR)) {
@@ -204,6 +223,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
 
         launcher.on('close', () => {
             gameRunning = false;
+            authenticatorData = null;
             mainWindow?.webContents.send('launch:close');
             if (tray) {
                 tray.destroy();
@@ -215,7 +235,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         });
 
         launcher.on('error', (err) => {
-            mainWindow?.webContents.send('launch:error', String(err));
+            mainWindow?.webContents.send('launch:error', String(err).slice(0, 500));
         });
 
         const launchOptions = {
@@ -234,7 +254,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             java: {
                 version: '21'
             },
-            verify: false,
+            verify: true,
             downloadFileMultiple: 5
         };
 

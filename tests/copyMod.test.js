@@ -7,6 +7,7 @@ function createMockFs() {
     existsSync: vi.fn(),
     mkdirSync: vi.fn(),
     readdirSync: vi.fn(),
+    lstatSync: vi.fn(() => ({ isSymbolicLink: () => false })),
     copyFileSync: vi.fn(),
   }
 }
@@ -51,6 +52,22 @@ describe('copyMod()', () => {
   it('skips -sources.jar files', () => {
     mockFs.existsSync.mockReturnValue(true)
     mockFs.readdirSync.mockReturnValue(['mod-a.jar', 'mod-a-sources.jar', 'readme.txt'])
+
+    copyMod('/game', ['/source'], mockFs)
+
+    expect(mockFs.copyFileSync).toHaveBeenCalledTimes(1)
+    expect(mockFs.copyFileSync).toHaveBeenCalledWith(
+      path.join('/source', 'mod-a.jar'),
+      path.join('/game', 'mods', 'mod-a.jar')
+    )
+  })
+
+  it('skips symlinked jar files', () => {
+    mockFs.existsSync.mockReturnValue(true)
+    mockFs.readdirSync.mockReturnValue(['mod-a.jar', 'mod-b.jar'])
+    mockFs.lstatSync.mockImplementation((p) => ({
+      isSymbolicLink: () => p === path.join('/source', 'mod-b.jar')
+    }))
 
     copyMod('/game', ['/source'], mockFs)
 
