@@ -1,13 +1,14 @@
 {
   "name": "matcraft-launcher",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Custom launcher for MatCraft Minecraft server",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "concurrently -k \"cd renderer && npm run dev\" \"wait-on http://localhost:5173 && electron . --dev\"",
     "build:renderer": "cd renderer && npm run build",
-    "dist": "npm run build:renderer && electron-builder --win",
+    "build:guard": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /nologo /optimize /out:lib\\dllGuardWorker.exe lib\\dllGuardWorker.cs",
+    "dist": "npm run build:guard && npm run build:renderer && electron-builder --win",
     "deploy": "npm run dist && scp dist/*.exe dist/latest.yml dist/*.blockmap debian@matfaction.com:/home/debian/website/azuriom/public/launcher/",
     "postinstall": "cd renderer && npm install",
     "test": "vitest run --config vitest.config.mjs",
@@ -19,7 +20,7 @@
   "build": {
     "asar": true,
     "asarUnpack": [
-      "lib/dllGuard.ps1"
+      "lib/dllGuardWorker.exe"
     ],
     "appId": "com.matcraft.launcher",
     "productName": "MatCraft",

@@ -4,6 +4,7 @@ node_modules/
 # Build output
 renderer/dist/
 dist/
+lib/dllGuardWorker.exe
 
 # OS
 *.DS_Store

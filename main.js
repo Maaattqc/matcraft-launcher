@@ -340,15 +340,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
                             message = 'Violation anti-triche détectée. Le jeu a été fermé.';
                         }
                         mainWindow?.webContents.send('launch:error', message);
-                        console.log(`[dllGuard] Game killed — ${violation}`);
-                    },
-                    onLocked(count) {
-                        console.log(`[dllGuard] Monitoring active — ${count} modules whitelisted`);
                     }
                 });
-            }).catch((err) => {
-                console.error('[dllGuard] Failed to start:', err.message);
-            });
+            }).catch(() => {});
         }
 
         return { success: true };
