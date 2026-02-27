@@ -1,0 +1,49 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer
+        run: npm run build:renderer
+
+      - name: Build Electron (Windows)
+        run: npx electron-builder --win
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: matcraft-release
+          path: |
+            dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
+
+      - name: Deploy to server via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          source: "dist/*.exe,dist/latest.yml,dist/*.blockmap"
+          target: "/home/debian/website/azuriom/public/launcher/"
+          strip_components: 1

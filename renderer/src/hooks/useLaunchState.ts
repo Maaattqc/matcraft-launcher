@@ -6,6 +6,7 @@ export type LaunchPhase =
   | 'downloading'
   | 'extracting'
   | 'patching'
+  | 'loading_mods'
   | 'running'
   | 'error'
 
@@ -28,6 +29,7 @@ type LaunchAction =
   | { type: 'PATCH'; patchName: string }
   | { type: 'DATA'; line: string }
   | { type: 'RUNNING' }
+  | { type: 'MODS_LOADED' }
   | { type: 'CLOSE' }
   | { type: 'ERROR'; error: string }
   | { type: 'RESET' }
@@ -81,19 +83,35 @@ function reducer(state: LaunchState, action: LaunchAction): LaunchState {
       const logs = state.consoleLogs.length >= MAX_CONSOLE_LINES
         ? [...state.consoleLogs.slice(-MAX_CONSOLE_LINES + 1), action.line]
         : [...state.consoleLogs, action.line]
-      const gameReady = action.line.includes('Created:') && action.line.includes('title:')
-      const nextPhase = gameReady && state.phase !== 'running' ? 'running' : state.phase
+      const windowCreated = action.line.includes('Render thread')
+
+      let nextPhase = state.phase
+      let nextStatus = state.statusText
+      let nextProgress = state.progress
+
+      if (windowCreated && state.phase !== 'running' && state.phase !== 'loading_mods') {
+        nextPhase = 'loading_mods'
+        nextStatus = 'Chargement des mods...'
+        nextProgress = 100
+      }
+
       return {
         ...state,
         phase: nextPhase,
-        statusText: nextPhase === 'running' ? 'Jeu en cours...' : state.statusText,
-        progress: nextPhase === 'running' ? 100 : state.progress,
+        statusText: nextStatus,
+        progress: nextProgress,
         consoleLogs: logs,
       }
     }
 
     case 'RUNNING':
       return { ...state, phase: 'running', statusText: 'Jeu en cours...', progress: 100 }
+
+    case 'MODS_LOADED':
+      if (state.phase === 'loading_mods') {
+        return { ...state, phase: 'running', statusText: 'Jeu en cours...', progress: 100 }
+      }
+      return state
 
     case 'CLOSE':
       return { ...initialState }

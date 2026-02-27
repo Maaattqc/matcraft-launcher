@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { ExternalLink } from 'lucide-react'
 import { useLaunchState } from '@/hooks/useLaunchState'
@@ -40,6 +40,28 @@ export function MainView({ user, maxRam, onLogout }: MainViewProps) {
 
     return () => cleanups.forEach(fn => fn?.())
   }, [dispatch])
+
+  // Debounce: quand les logs s'arretent pendant 10s en loading_mods, le jeu est pret
+  const modsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (state.phase !== 'loading_mods') {
+      if (modsTimeoutRef.current) {
+        clearTimeout(modsTimeoutRef.current)
+        modsTimeoutRef.current = null
+      }
+      return
+    }
+
+    if (modsTimeoutRef.current) clearTimeout(modsTimeoutRef.current)
+    modsTimeoutRef.current = setTimeout(() => {
+      dispatch({ type: 'MODS_LOADED' })
+    }, 5_000)
+
+    return () => {
+      if (modsTimeoutRef.current) clearTimeout(modsTimeoutRef.current)
+    }
+  }, [state.phase, state.consoleLogs, dispatch])
 
   const handlePlay = useCallback(async () => {
     if (state.phase === 'error') {

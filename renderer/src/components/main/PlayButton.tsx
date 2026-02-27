@@ -13,6 +13,7 @@ const phaseConfig: Record<LaunchPhase, { label: string; icon: React.ReactNode; d
   downloading: { label: 'Téléchargement...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },
   extracting: { label: 'Extraction...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },
   patching: { label: 'Patch...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },
+  loading_mods: { label: 'Chargement des mods...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },
   running: { label: 'En jeu', icon: null, disabled: true },
   error: { label: 'Réessayer', icon: <RotateCcw className="h-5 w-5" />, disabled: false },
 }

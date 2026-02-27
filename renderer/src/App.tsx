@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { TitleBar } from '@/components/layout/TitleBar'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { LoginView } from '@/components/login/LoginView'
 import { MainView } from '@/components/main/MainView'
 import { SettingsView } from '@/components/settings/SettingsView'
+import { UpdateScreen } from '@/components/update/UpdateScreen'
 
 interface User {
   username: string
@@ -12,11 +13,55 @@ interface User {
 }
 
 type View = 'home' | 'settings'
+type UpdateStatus = 'checking' | 'downloading' | 'downloaded' | 'none' | 'error'
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [currentView, setCurrentView] = useState<View>('home')
   const [maxRam, setMaxRam] = useState('4G')
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('checking')
+  const [updateProgress, setUpdateProgress] = useState(0)
+
+  useEffect(() => {
+    // In dev, the updater never fires — go straight to login
+    if (!window.launcher.onUpdaterChecking) {
+      setUpdateStatus('none')
+      return
+    }
+
+    const cleanups = [
+      window.launcher.onUpdaterChecking(() => {
+        setUpdateStatus('checking')
+      }),
+      window.launcher.onUpdaterUpdateAvailable(() => {
+        setUpdateStatus('downloading')
+        setUpdateProgress(0)
+      }),
+      window.launcher.onUpdaterProgress((percent) => {
+        setUpdateProgress(Math.round(percent))
+      }),
+      window.launcher.onUpdaterDownloaded(() => {
+        setUpdateStatus('downloaded')
+        setUpdateProgress(100)
+      }),
+      window.launcher.onUpdaterNotAvailable(() => {
+        setUpdateStatus('none')
+      }),
+      window.launcher.onUpdaterError(() => {
+        setUpdateStatus('none')
+      }),
+    ]
+
+    // Timeout: if no updater event after 5s, assume no update (dev/packaged without update)
+    const timeout = setTimeout(() => {
+      setUpdateStatus(prev => prev === 'checking' ? 'none' : prev)
+    }, 5000)
+
+    return () => {
+      clearTimeout(timeout)
+      cleanups.forEach(fn => fn())
+    }
+  }, [])
 
   function handleLogin(loggedInUser: User) {
     const root = document.getElementById('root')!
@@ -32,6 +77,11 @@ export default function App() {
   function handleLogout() {
     setCurrentView('home')
     setUser(null)
+  }
+
+  // ── Update screen (blocking, before login) ──
+  if (updateStatus === 'checking' || updateStatus === 'downloading' || updateStatus === 'downloaded') {
+    return <UpdateScreen status={updateStatus} progress={updateProgress} />
   }
 
   // ── Login page (separate full-screen view, no sidebar) ──

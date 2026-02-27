@@ -49,6 +49,38 @@ contextBridge.exposeInMainWorld('launcher', {
         return () => ipcRenderer.removeListener('launch:error', handler);
     },
 
+    // Updater events
+    onUpdaterChecking: (cb) => {
+        const handler = () => cb();
+        ipcRenderer.on('updater:checking', handler);
+        return () => ipcRenderer.removeListener('updater:checking', handler);
+    },
+    onUpdaterUpdateAvailable: (cb) => {
+        const handler = (_e, version) => cb(version);
+        ipcRenderer.on('updater:update-available', handler);
+        return () => ipcRenderer.removeListener('updater:update-available', handler);
+    },
+    onUpdaterProgress: (cb) => {
+        const handler = (_e, percent) => cb(percent);
+        ipcRenderer.on('updater:download-progress', handler);
+        return () => ipcRenderer.removeListener('updater:download-progress', handler);
+    },
+    onUpdaterDownloaded: (cb) => {
+        const handler = () => cb();
+        ipcRenderer.on('updater:update-downloaded', handler);
+        return () => ipcRenderer.removeListener('updater:update-downloaded', handler);
+    },
+    onUpdaterNotAvailable: (cb) => {
+        const handler = () => cb();
+        ipcRenderer.on('updater:not-available', handler);
+        return () => ipcRenderer.removeListener('updater:not-available', handler);
+    },
+    onUpdaterError: (cb) => {
+        const handler = (_e, message) => cb(message);
+        ipcRenderer.on('updater:error', handler);
+        return () => ipcRenderer.removeListener('updater:error', handler);
+    },
+
     // Window controls
     minimize: () => ipcRenderer.send('window:minimize'),
     maximize: () => ipcRenderer.send('window:maximize'),

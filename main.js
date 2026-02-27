@@ -1,7 +1,10 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const { Launch, AZauth } = require('minecraft-java-core');
+
+app.setName('MatCraft');
 
 const AZAUTH_URL = 'https://matfaction.com';
 const MOD_SOURCES = [
@@ -12,6 +15,8 @@ let mainWindow = null;
 let launcher = null;
 let GAME_DIR = '';
 let authenticatorData = null;
+let gameRunning = false;
+let tray = null;
 
 function createWindow() {
     GAME_DIR = path.join(app.getPath('appData'), '.matcraft');
@@ -38,10 +43,50 @@ function createWindow() {
     }
 }
 
-app.whenReady().then(createWindow);
+function setupAutoUpdater() {
+    if (!app.isPackaged) return;
+
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = false;
+
+    autoUpdater.on('checking-for-update', () => {
+        console.log('[updater] Checking for update...');
+        mainWindow?.webContents.send('updater:checking');
+    });
+    autoUpdater.on('update-available', (info) => {
+        console.log('[updater] Update available:', info.version);
+        mainWindow?.webContents.send('updater:update-available', info.version);
+    });
+    autoUpdater.on('update-not-available', () => {
+        console.log('[updater] Already up to date.');
+        mainWindow?.webContents.send('updater:not-available');
+    });
+    autoUpdater.on('download-progress', (progress) => {
+        console.log(`[updater] Download: ${Math.round(progress.percent)}%`);
+        mainWindow?.webContents.send('updater:download-progress', progress.percent);
+    });
+    autoUpdater.on('update-downloaded', (info) => {
+        console.log('[updater] Update downloaded:', info.version, '— installing now.');
+        mainWindow?.webContents.send('updater:update-downloaded');
+        setTimeout(() => {
+            autoUpdater.quitAndInstall();
+        }, 1500);
+    });
+    autoUpdater.on('error', (err) => {
+        console.error('[updater] Error:', err.message);
+        mainWindow?.webContents.send('updater:error', err.message);
+    });
+
+    autoUpdater.checkForUpdates();
+}
+
+app.whenReady().then(() => {
+    createWindow();
+    setupAutoUpdater();
+});
 
 app.on('window-all-closed', () => {
-    app.quit();
+    if (!gameRunning) app.quit();
 });
 
 // ── Window controls ──
@@ -53,7 +98,25 @@ ipcMain.on('window:maximize', () => {
         mainWindow?.maximize();
     }
 });
-ipcMain.on('window:close', () => mainWindow?.close());
+ipcMain.on('window:close', () => {
+    if (gameRunning) {
+        mainWindow?.hide();
+        if (!tray) {
+            const iconPath = path.join(__dirname, 'src', 'icon.png');
+            tray = new Tray(iconPath);
+            tray.setToolTip('MatCraft Launcher');
+            const contextMenu = Menu.buildFromTemplate([
+                { label: 'Ouvrir MatCraft', click: () => { mainWindow?.show(); } },
+                { type: 'separator' },
+                { label: 'Quitter', click: () => { gameRunning = false; mainWindow?.close(); app.quit(); } }
+            ]);
+            tray.setContextMenu(contextMenu);
+            tray.on('double-click', () => { mainWindow?.show(); });
+        }
+    } else {
+        mainWindow?.close();
+    }
+});
 
 // ── Window resize (login → launcher) ──
 ipcMain.on('window:resize-to-launcher', () => {
@@ -139,7 +202,15 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         });
 
         launcher.on('close', () => {
+            gameRunning = false;
             mainWindow?.webContents.send('launch:close');
+            if (tray) {
+                tray.destroy();
+                tray = null;
+            }
+            if (mainWindow && !mainWindow.isVisible()) {
+                mainWindow.show();
+            }
         });
 
         launcher.on('error', (err) => {
@@ -167,6 +238,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         };
 
         await launcher.Launch(launchOptions);
+        gameRunning = true;
         return { success: true };
     } catch (err) {
         return { success: false, error: err.message || 'Erreur lors du lancement.' };
