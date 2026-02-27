@@ -145,7 +145,7 @@ export function MainView({ user, maxRam, onLogout }: MainViewProps) {
           />
 
           {/* Version */}
-          <p className="text-[11px] text-white/30 mt-2">Version 1.0.0</p>
+          <p className="text-[11px] text-white/30 mt-2">Version {__APP_VERSION__}</p>
         </div>
 
         {/* Right side - News card */}

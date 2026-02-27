@@ -216,7 +216,7 @@ function AboutSettings() {
           <img src="./logoIcon.png" alt="MatCraft" className="h-12 w-12 rounded-lg" />
           <div>
             <p className="text-base font-bold text-white">MatCraft Launcher</p>
-            <p className="text-sm text-white/40">Version 1.0.0</p>
+            <p className="text-sm text-white/40">Version {__APP_VERSION__}</p>
           </div>
         </div>
         <p className="text-sm text-white/50">

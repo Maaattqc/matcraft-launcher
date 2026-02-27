@@ -58,3 +58,19 @@ jobs:
           source: "release/*"
           target: "/home/debian/website/azuriom/public/launcher/"
           strip_components: 1
+
+      - name: Clean up old versions
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+            LAUNCHER_DIR="/home/debian/website/azuriom/public/launcher"
+            echo "Keeping version $VERSION, removing old files..."
+            find "$LAUNCHER_DIR" -maxdepth 1 \( -name "*.exe" -o -name "*.blockmap" \) ! -name "*$VERSION*" -delete
+            echo "Remaining files:"
+            ls -la "$LAUNCHER_DIR"
