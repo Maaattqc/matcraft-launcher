@@ -4,10 +4,11 @@ const path = require('path');
 
 // Game modules are lazy-loaded so a missing/broken module doesn't prevent
 // the auto-updater from running (our recovery mechanism).
-let fs, Launch, AZauth, syncMods, createModsGuard, verifyFabricLoader, snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard;
+let fs, crypto, Launch, AZauth, syncMods, createModsGuard, verifyFabricLoader, snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard;
 let modulesError = null;
 try {
     fs = require('fs');
+    crypto = require('crypto');
     ({ Launch, AZauth } = require('minecraft-java-core'));
     ({ syncMods, createModsGuard, verifyFabricLoader } = require('./lib/syncMods'));
     ({ snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard } = require('./lib/dllGuard'));
@@ -223,7 +224,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
     }
 
     try {
-        // Verify anti-cheat binary exists (Windows only)
+        // Verify anti-cheat binary exists and integrity (Windows only)
         if (process.platform === 'win32') {
             const guardPath = path.join(
                 __dirname.replace('app.asar', 'app.asar.unpacked'),
@@ -231,6 +232,14 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             );
             if (!fs.existsSync(guardPath)) {
                 return { success: false, error: 'Fichiers de sécurité manquants. Réinstallez le launcher.' };
+            }
+            if (app.isPackaged) {
+                const { sha256: expected } = require('./lib/guardHash.json');
+                const actual = crypto.createHash('sha256')
+                    .update(fs.readFileSync(guardPath)).digest('hex');
+                if (actual !== expected) {
+                    return { success: false, error: 'Fichiers de sécurité corrompus. Réinstallez le launcher.' };
+                }
             }
         }
 

@@ -30,6 +30,9 @@ jobs:
         run: |
           & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize /out:lib\dllGuardWorker.exe lib\dllGuardWorker.cs
 
+      - name: Compute guard hash
+        run: node lib/computeGuardHash.js
+
       - name: Build Electron (Windows)
         run: npx electron-builder --win
 

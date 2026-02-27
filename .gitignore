@@ -5,6 +5,7 @@ node_modules/
 renderer/dist/
 dist/
 lib/dllGuardWorker.exe
+lib/guardHash.json
 
 # OS
 *.DS_Store
