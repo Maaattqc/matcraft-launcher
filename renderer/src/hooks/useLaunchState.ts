@@ -36,7 +36,7 @@ type LaunchAction =
 
 const MAX_CONSOLE_LINES = 500
 
-const initialState: LaunchState = {
+export const initialState: LaunchState = {
   phase: 'idle',
   progress: 0,
   speed: '',
@@ -46,7 +46,7 @@ const initialState: LaunchState = {
   error: null,
 }
 
-function reducer(state: LaunchState, action: LaunchAction): LaunchState {
+export function reducer(state: LaunchState, action: LaunchAction): LaunchState {
   switch (action.type) {
     case 'START':
       return { ...initialState, phase: 'launching', statusText: 'Lancement en cours...' }

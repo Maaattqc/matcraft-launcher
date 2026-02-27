@@ -9,7 +9,7 @@ interface ProgressPanelProps {
   statusText: string
 }
 
-function formatEta(seconds: number): string {
+export function formatEta(seconds: number): string {
   if (seconds <= 0) return ''
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)

@@ -3,6 +3,7 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const { Launch, AZauth } = require('minecraft-java-core');
+const { copyMod } = require('./lib/copyMod');
 
 app.setName('MatCraft');
 
@@ -172,7 +173,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         }
 
         // Copy MatCraft mod to mods folder
-        copyMod();
+        copyMod(GAME_DIR, MOD_SOURCES);
 
         launcher = new Launch();
 
@@ -245,20 +246,3 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
     }
 });
 
-function copyMod() {
-    const modsDir = path.join(GAME_DIR, 'mods');
-    if (!fs.existsSync(modsDir)) {
-        fs.mkdirSync(modsDir, { recursive: true });
-    }
-
-    // Copy mods from sources (keep existing mods intact)
-    for (const source of MOD_SOURCES) {
-        if (!fs.existsSync(source)) continue;
-        const jars = fs.readdirSync(source).filter(f => f.endsWith('.jar') && !f.includes('-sources'));
-        for (const jar of jars) {
-            const src = path.join(source, jar);
-            const dest = path.join(modsDir, jar);
-            fs.copyFileSync(src, dest);
-        }
-    }
-}
