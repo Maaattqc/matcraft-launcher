@@ -37,6 +37,17 @@ jobs:
             dist/latest.yml
             dist/*.blockmap
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: matcraft-release
+          path: release
+
       - name: Deploy to server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -44,6 +55,6 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
-          source: "dist/*.exe,dist/latest.yml,dist/*.blockmap"
+          source: "release/*"
           target: "/home/debian/website/azuriom/public/launcher/"
           strip_components: 1
