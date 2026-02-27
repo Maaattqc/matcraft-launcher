@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Settings,
@@ -11,6 +11,8 @@ import {
   Terminal,
   AlertTriangle,
   Wrench,
+  Loader2,
+  Check,
 } from 'lucide-react'
 import {
   Select,
@@ -113,6 +115,8 @@ export function SettingsView({ maxRam, setMaxRam, onLogout }: SettingsViewProps)
   )
 }
 
+type RepairStatus = 'idle' | 'downloading' | 'installing' | 'error'
+
 function GeneralSettings({
   language,
   setLanguage,
@@ -128,6 +132,41 @@ function GeneralSettings({
   maxRam: string
   setMaxRam: (v: string) => void
 }) {
+  const [repairStatus, setRepairStatus] = useState<RepairStatus>('idle')
+  const [repairProgress, setRepairProgress] = useState(0)
+  const [repairError, setRepairError] = useState('')
+
+  useEffect(() => {
+    if (repairStatus !== 'downloading' && repairStatus !== 'installing') return
+
+    const cleanups = [
+      window.launcher.onUpdaterProgress?.((percent) => {
+        setRepairProgress(Math.round(percent))
+      }),
+      window.launcher.onUpdaterDownloaded?.(() => {
+        setRepairStatus('installing')
+      }),
+      window.launcher.onUpdaterError?.((message) => {
+        setRepairStatus('error')
+        setRepairError(message)
+      }),
+    ]
+
+    return () => { cleanups.forEach(fn => fn?.()) }
+  }, [repairStatus])
+
+  async function handleRepair() {
+    setRepairStatus('downloading')
+    setRepairProgress(0)
+    setRepairError('')
+
+    const result = await window.launcher.repair()
+    if (!result.success) {
+      setRepairStatus('error')
+      setRepairError(result.error ?? 'Erreur inconnue')
+    }
+  }
+
   return (
     <div>
       <h3 className="text-2xl font-bold text-white mb-6">Paramètres</h3>
@@ -185,10 +224,44 @@ function GeneralSettings({
         {/* Réparer l'installation */}
         <div className="bg-black/60 rounded-xl border border-white/10 p-5">
           <h4 className="text-sm font-semibold text-white mb-1">Réparer l'installation</h4>
-          <p className="text-xs text-white/40 mb-4">Retélécharge les fichiers du jeu si vous rencontrez des problèmes.</p>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-sm text-white font-medium transition-colors cursor-pointer">
-            <Wrench className="h-4 w-4" />
-            Réparer
+          <p className="text-xs text-white/40 mb-4">
+            {repairStatus === 'downloading'
+              ? `Téléchargement en cours... ${repairProgress}%`
+              : repairStatus === 'installing'
+                ? 'Installation en cours, le launcher va redémarrer...'
+                : repairStatus === 'error'
+                  ? repairError
+                  : 'Retélécharge et réinstalle le launcher si vous rencontrez des problèmes.'}
+          </p>
+
+          {repairStatus === 'downloading' && (
+            <div className="w-full h-1.5 bg-white/10 rounded-full mb-4 overflow-hidden">
+              <div
+                className="h-full bg-white/80 rounded-full transition-all duration-300"
+                style={{ width: `${repairProgress}%` }}
+              />
+            </div>
+          )}
+
+          <button
+            onClick={handleRepair}
+            disabled={repairStatus === 'downloading' || repairStatus === 'installing'}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-sm text-white font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {repairStatus === 'downloading' || repairStatus === 'installing' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : repairStatus === 'error' ? (
+              <Wrench className="h-4 w-4" />
+            ) : (
+              <Wrench className="h-4 w-4" />
+            )}
+            {repairStatus === 'downloading'
+              ? 'Téléchargement...'
+              : repairStatus === 'installing'
+                ? 'Redémarrage...'
+                : repairStatus === 'error'
+                  ? 'Réessayer'
+                  : 'Réparer'}
           </button>
         </div>
       </div>

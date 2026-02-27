@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('launcher', {
     // Launch
     launchGame: (config) => ipcRenderer.invoke('minecraft:launch', config),
 
+    // Repair
+    repair: () => ipcRenderer.invoke('app:repair'),
+
     // Events from main process (return cleanup functions)
     onProgress: (cb) => {
         const handler = (_e, progress, size, element) => cb(progress, size, element);

@@ -32,6 +32,7 @@ export interface SyncProgressData {
 export interface LauncherAPI {
   login(email: string, password: string): Promise<LoginResult>
   launchGame(config: LaunchConfig): Promise<LaunchResult>
+  repair(): Promise<{ success: boolean; error?: string }>
 
   onUpdaterChecking(cb: () => void): () => void
   onUpdaterUpdateAvailable(cb: (version: string) => void): () => void
