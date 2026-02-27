@@ -22,6 +22,13 @@ export interface LaunchConfig {
   maxRam: string
 }
 
+export interface SyncProgressData {
+  phase: 'checking' | 'downloading' | 'deleting' | 'done'
+  current: number
+  total: number
+  modName: string | null
+}
+
 export interface LauncherAPI {
   login(email: string, password: string): Promise<LoginResult>
   launchGame(config: LaunchConfig): Promise<LaunchResult>
@@ -41,6 +48,7 @@ export interface LauncherAPI {
   onData(cb: (line: string) => void): () => void
   onClose(cb: () => void): () => void
   onError(cb: (err: string) => void): () => void
+  onSyncProgress(cb: (data: SyncProgressData) => void): () => void
 
   minimize(): void
   maximize(): void

@@ -10,6 +10,7 @@ interface PlayButtonProps {
 const phaseConfig: Record<LaunchPhase, { label: string; icon: React.ReactNode; disabled: boolean }> = {
   idle: { label: 'Lancer', icon: null, disabled: false },
   launching: { label: 'Lancement...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },
+  syncing_mods: { label: 'Vérification des mods...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },
   downloading: { label: 'Téléchargement...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },
   extracting: { label: 'Extraction...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },
   patching: { label: 'Patch...', icon: <Loader2 className="h-5 w-5 animate-spin" />, disabled: true },

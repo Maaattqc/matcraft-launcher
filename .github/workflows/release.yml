@@ -100,8 +100,45 @@ jobs:
             dist/*.AppImage
             dist/latest-linux.yml
 
+  build-mods:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate mods manifest
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
+          const modsDir = path.join(__dirname, 'mods');
+          if (!fs.existsSync(modsDir)) { console.log('No mods directory'); process.exit(0); }
+          const jars = fs.readdirSync(modsDir).filter(f => f.endsWith('.jar') && !f.includes('-sources'));
+          const mods = jars.map(name => {
+            const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(modsDir, name))).digest('hex');
+            return { name, sha256: hash };
+          });
+          fs.writeFileSync(path.join(modsDir, 'manifest.json'), JSON.stringify({ mods }, null, 2));
+          console.log('Generated manifest for', mods.length, 'mods:', JSON.stringify(mods, null, 2));
+          "
+
+      - name: Upload mods artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mods
+          path: |
+            mods/*.jar
+            mods/manifest.json
+
   deploy:
-    needs: [build-win, build-mac, build-linux]
+    needs: [build-win, build-mac, build-linux, build-mods]
     runs-on: ubuntu-latest
 
     steps:
@@ -122,6 +159,12 @@ jobs:
         with:
           name: release-linux
           path: release
+
+      - name: Download mods artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-mods
+          path: release/mods
 
       - name: Deploy to server via SCP
         uses: appleboy/scp-action@v0.1.7

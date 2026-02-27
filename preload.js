@@ -48,6 +48,11 @@ contextBridge.exposeInMainWorld('launcher', {
         ipcRenderer.on('launch:error', handler);
         return () => ipcRenderer.removeListener('launch:error', handler);
     },
+    onSyncProgress: (cb) => {
+        const handler = (_e, data) => cb(data);
+        ipcRenderer.on('launch:sync-progress', handler);
+        return () => ipcRenderer.removeListener('launch:sync-progress', handler);
+    },
 
     // Updater events
     onUpdaterChecking: (cb) => {

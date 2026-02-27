@@ -3,6 +3,7 @@ import { useReducer } from 'react'
 export type LaunchPhase =
   | 'idle'
   | 'launching'
+  | 'syncing_mods'
   | 'downloading'
   | 'extracting'
   | 'patching'
@@ -22,6 +23,7 @@ export interface LaunchState {
 
 type LaunchAction =
   | { type: 'START' }
+  | { type: 'SYNC_PROGRESS'; phase: string; current: number; total: number; modName: string | null }
   | { type: 'PROGRESS'; progress: number; size: number; element: string }
   | { type: 'SPEED'; speed: string }
   | { type: 'ESTIMATED'; seconds: number }
@@ -50,6 +52,32 @@ export function reducer(state: LaunchState, action: LaunchAction): LaunchState {
   switch (action.type) {
     case 'START':
       return { ...initialState, phase: 'launching', statusText: 'Lancement en cours...' }
+
+    case 'SYNC_PROGRESS': {
+      if (action.phase === 'done') {
+        return { ...state, phase: 'launching', statusText: 'Lancement en cours...', progress: 0 }
+      }
+      if (action.phase === 'checking') {
+        return { ...state, phase: 'syncing_mods', statusText: 'Vérification des mods...', progress: 0 }
+      }
+      if (action.phase === 'downloading') {
+        const percent = action.total > 0 ? (action.current / action.total) * 100 : 0
+        return {
+          ...state,
+          phase: 'syncing_mods',
+          progress: percent,
+          statusText: `Téléchargement : ${action.modName} (${action.current}/${action.total})`,
+        }
+      }
+      if (action.phase === 'deleting') {
+        return {
+          ...state,
+          phase: 'syncing_mods',
+          statusText: `Suppression : ${action.modName}`,
+        }
+      }
+      return state
+    }
 
     case 'PROGRESS': {
       const percent = action.size > 0 ? Math.min((action.progress / action.size) * 100, 100) : 0

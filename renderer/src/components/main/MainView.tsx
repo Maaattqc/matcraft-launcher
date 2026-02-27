@@ -36,6 +36,9 @@ export function MainView({ user, maxRam, onLogout }: MainViewProps) {
       window.launcher.onData((line) => dispatch({ type: 'DATA', line })),
       window.launcher.onClose(() => dispatch({ type: 'CLOSE' })),
       window.launcher.onError((err) => dispatch({ type: 'ERROR', error: err })),
+      window.launcher.onSyncProgress((data) =>
+        dispatch({ type: 'SYNC_PROGRESS', phase: data.phase, current: data.current, total: data.total, modName: data.modName })
+      ),
     ]
 
     return () => cleanups.forEach(fn => fn?.())
@@ -85,7 +88,7 @@ export function MainView({ user, maxRam, onLogout }: MainViewProps) {
     }
   }, [state.phase, user, maxRam, dispatch])
 
-  const showProgress = state.phase === 'downloading' || state.phase === 'extracting' || state.phase === 'patching'
+  const showProgress = state.phase === 'syncing_mods' || state.phase === 'downloading' || state.phase === 'extracting' || state.phase === 'patching'
 
   return (
     <motion.div

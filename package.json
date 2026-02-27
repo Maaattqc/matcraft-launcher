@@ -1,6 +1,6 @@
 {
   "name": "matcraft-launcher",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Custom launcher for MatCraft Minecraft server",
   "main": "main.js",
   "scripts": {
@@ -18,9 +18,6 @@
   "license": "MIT",
   "build": {
     "asar": true,
-    "asarUnpack": [
-      "mods/**/*"
-    ],
     "appId": "com.matcraft.launcher",
     "productName": "MatCraft",
     "directories": {
@@ -31,8 +28,7 @@
       "preload.js",
       "lib/**/*",
       "renderer/dist/**/*",
-      "src/icon.png",
-      "mods/**/*"
+      "src/icon.png"
     ],
     "win": {
       "target": "nsis",

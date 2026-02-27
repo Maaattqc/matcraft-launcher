@@ -4,12 +4,12 @@ const path = require('path');
 
 // Game modules are lazy-loaded so a missing/broken module doesn't prevent
 // the auto-updater from running (our recovery mechanism).
-let fs, Launch, AZauth, copyMod;
+let fs, Launch, AZauth, syncMods;
 let modulesError = null;
 try {
     fs = require('fs');
     ({ Launch, AZauth } = require('minecraft-java-core'));
-    ({ copyMod } = require('./lib/copyMod'));
+    ({ syncMods } = require('./lib/syncMods'));
 } catch (err) {
     modulesError = err.message;
     console.error('[init] Failed to load game modules:', err.message);
@@ -20,9 +20,6 @@ try {
 app.setName('MatCraft');
 
 const AZAUTH_URL = 'https://matfaction.com';
-const MOD_SOURCES = [
-    path.resolve(__dirname.replace('app.asar', 'app.asar.unpacked'), 'mods')
-];
 
 let mainWindow = null;
 let launcher = null;
@@ -197,7 +194,7 @@ ipcMain.handle('azauth:login', async (_event, email, password) => {
 
 // ── Minecraft Launch ──
 ipcMain.handle('minecraft:launch', async (_event, config) => {
-    if (!Launch || !copyMod || !fs) {
+    if (!Launch || !syncMods || !fs) {
         return { success: false, error: 'Modules de jeu non disponibles. Une mise à jour est peut-être en cours.' };
     }
     const RAM_PATTERN = /^\d{1,5}[MG]$/;
@@ -214,8 +211,12 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             fs.mkdirSync(GAME_DIR, { recursive: true });
         }
 
-        // Copy MatCraft mod to mods folder
-        copyMod(GAME_DIR, MOD_SOURCES);
+        // Sync mods with server manifest (anti-cheat)
+        const MODS_BASE_URL = `${AZAUTH_URL}/launcher`;
+        const sendSyncProgress = (phase, current, total, modName) => {
+            mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName });
+        };
+        await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
 
         launcher = new Launch();
 
