@@ -9,7 +9,7 @@ app.setName('MatCraft');
 
 const AZAUTH_URL = 'https://matfaction.com';
 const MOD_SOURCES = [
-    path.resolve(__dirname, 'mods')
+    path.resolve(__dirname.replace('app.asar', 'app.asar.unpacked'), 'mods')
 ];
 
 let mainWindow = null;
@@ -255,6 +255,12 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
                 version: '21'
             },
             verify: true,
+            ignored: [
+                'mods',
+                'config',
+                'options.txt',
+                'servers.dat'
+            ],
             downloadFileMultiple: 5
         };
 

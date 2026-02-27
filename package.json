@@ -18,6 +18,9 @@
   "license": "MIT",
   "build": {
     "asar": true,
+    "asarUnpack": [
+      "mods/**/*"
+    ],
     "appId": "com.matcraft.launcher",
     "productName": "MatCraft",
     "directories": {
