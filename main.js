@@ -249,7 +249,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             loader: {
                 type: 'fabric',
                 enable: true,
-                build: 'latest'
+                build: '0.18.4'
             },
             java: {
                 version: '21'
