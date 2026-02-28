@@ -375,6 +375,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             JVM_ARGS: [
                 '-XX:+DisableAttachMechanism'
             ],
+            GAME_ARGS: [
+                '--quickPlayMultiplayer', 'play.matfaction.com'
+            ],
             downloadFileMultiple: 5
         };
 
