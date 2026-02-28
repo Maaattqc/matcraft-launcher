@@ -4,13 +4,13 @@ const path = require('path');
 
 // Game modules are lazy-loaded so a missing/broken module doesn't prevent
 // the auto-updater from running (our recovery mechanism).
-let fs, crypto, Launch, AZauth, syncMods, createModsGuard, verifyFabricLoader, snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard;
+let fs, crypto, Launch, AZauth, syncMods, syncConfigs, createModsGuard, verifyFabricLoader, snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard;
 let modulesError = null;
 try {
     fs = require('fs');
     crypto = require('crypto');
     ({ Launch, AZauth } = require('minecraft-java-core'));
-    ({ syncMods, createModsGuard, verifyFabricLoader } = require('./lib/syncMods'));
+    ({ syncMods, syncConfigs, createModsGuard, verifyFabricLoader } = require('./lib/syncMods'));
     ({ snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard } = require('./lib/dllGuard'));
 } catch (err) {
     modulesError = err.message;
@@ -248,7 +248,7 @@ ipcMain.handle('app:repair', async () => {
 
 // ── Minecraft Launch ──
 ipcMain.handle('minecraft:launch', async (_event, config) => {
-    if (!Launch || !syncMods || !createModsGuard || !verifyFabricLoader || !fs) {
+    if (!Launch || !syncMods || !syncConfigs || !createModsGuard || !verifyFabricLoader || !fs) {
         return { success: false, error: 'Modules de jeu non disponibles. Une mise à jour est peut-être en cours.' };
     }
     const RAM_PATTERN = /^\d{1,5}[MG]$/;
@@ -290,6 +290,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName });
         };
         const allowedMods = await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
+
+        // Sync FancyMenu configs from server
+        await syncConfigs(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
 
         // Start watching the mods directory for unauthorized changes
         const modsDir = path.join(GAME_DIR, 'mods');
