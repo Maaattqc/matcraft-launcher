@@ -1,0 +1,273 @@
+/* ============================================
+   MatCraft FileBrowser Theme
+   Light mode = default FileBrowser
+   Dark mode  = MatCraft Nomad dark (via CSS variable overrides)
+   Toggle via html.theme-dark class
+   ============================================ */
+
+/* --- Hide sidebar credits/version (light + dark) --- */
+nav .credits,
+#nav .credits,
+.sidebar .credits {
+  display: none !important;
+}
+
+/* --- Font --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ============================================
+   DARK MODE — CSS Variable Overrides
+   FileBrowser uses :root vars for ALL colors.
+   We override them on html.theme-dark so every
+   element picks up the dark palette automatically.
+   ============================================ */
+
+html.theme-dark {
+  color-scheme: dark;
+
+  /* Core palette */
+  --background: #0a0a0f;
+  --surfacePrimary: #111118;
+  --surfaceSecondary: #1a1a24;
+  --textPrimary: #a0a0b8;
+  --textSecondary: #f0f0f5;
+  --divider: rgba(255, 255, 255, 0.06);
+  --hover: rgba(255, 255, 255, 0.08);
+  --borderPrimary: rgba(255, 255, 255, 0.08);
+  --borderSecondary: rgba(255, 255, 255, 0.15);
+  --dividerPrimary: rgba(255, 255, 255, 0.06);
+  --dividerSecondary: rgba(255, 255, 255, 0.12);
+
+  /* Icons */
+  --iconPrimary: #60A5FA;
+  --iconSecondary: #f0f0f5;
+  --iconTertiary: #a0a0b8;
+
+  /* Accent colors */
+  --blue: #3B82F6;
+  --dark-blue: #2563EB;
+  --red: #ef4444;
+  --dark-red: #dc2626;
+
+  /* Selection */
+  --item-selected: #3B82F6;
+
+  /* Inputs */
+  --input-red: rgb(115, 48, 45);
+  --input-green: rgb(20, 122, 65);
+
+  /* Action icons in header */
+  --action: #a0a0b8;
+
+  /* Moon grey used in some places */
+  --moon-grey: #1a1a24;
+}
+
+/* Font override */
+html.theme-dark body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* --- Loading screen (hardcoded inline styles) --- */
+html.theme-dark #loading {
+  background: #0a0a0f !important;
+}
+
+html.theme-dark #loading .spinner > div {
+  background-color: #3B82F6 !important;
+}
+
+/* --- Login Page enhancements --- */
+html.theme-dark #login {
+  background: #0a0a0f;
+}
+
+html.theme-dark #login form {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+html.theme-dark #login input.button,
+html.theme-dark #login button[type="submit"] {
+  background: linear-gradient(135deg, #3B82F6, #60A5FA, #93C5FD) !important;
+  border: none !important;
+  border-radius: 8px;
+  color: #ffffff !important;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+html.theme-dark #login input.button:hover,
+html.theme-dark #login button[type="submit"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+}
+
+html.theme-dark #login .wrong {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+
+/* --- Header enhancements --- */
+html.theme-dark header {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* --- Item hover glass effect --- */
+html.theme-dark #listing .item:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* --- Mosaic view cards --- */
+html.theme-dark #listing.mosaic .item {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+html.theme-dark #listing.mosaic .item:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* --- Modal/Card enhancements --- */
+html.theme-dark .card {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.theme-dark .overlay {
+  backdrop-filter: blur(4px);
+}
+
+/* --- Button enhancements --- */
+html.theme-dark .button--flat {
+  color: #60A5FA !important;
+}
+
+html.theme-dark .button--flat:hover {
+  background: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* --- Editor --- */
+html.theme-dark .CodeMirror,
+html.theme-dark .cm-editor {
+  background: #0a0a0f !important;
+  color: #f0f0f5 !important;
+}
+
+html.theme-dark .CodeMirror-gutters,
+html.theme-dark .cm-gutters {
+  background: #111118 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.theme-dark .CodeMirror-cursor,
+html.theme-dark .cm-cursor {
+  border-left-color: #f0f0f5 !important;
+}
+
+html.theme-dark .CodeMirror-selected,
+html.theme-dark .cm-selectionBackground {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* --- Scrollbar --- */
+html.theme-dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.theme-dark ::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+html.theme-dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+html.theme-dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Firefox scrollbar */
+html.theme-dark {
+  scrollbar-color: rgba(255, 255, 255, 0.1) #0a0a0f;
+  scrollbar-width: thin;
+}
+
+/* --- Selection --- */
+html.theme-dark ::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: #f0f0f5;
+}
+
+/* --- Share box --- */
+html.theme-dark .share__box {
+  box-shadow: rgba(0, 0, 0, 0.3) 0 1px 3px, rgba(0, 0, 0, 0.4) 0 1px 2px;
+}
+
+/* ============================================
+   THEME TOGGLE BUTTON
+   ============================================ */
+
+#theme-toggle-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 99999;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+#theme-toggle-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+#theme-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+#theme-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+  color: #333;
+  stroke: #333;
+}
+
+#theme-toggle-btn:hover svg {
+  transform: rotate(15deg);
+}
+
+html.theme-dark #theme-toggle-btn {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+html.theme-dark #theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+html.theme-dark #theme-toggle-btn svg {
+  color: #f0f0f5;
+  stroke: #f0f0f5;
+}

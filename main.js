@@ -228,7 +228,11 @@ ipcMain.handle('azauth:login', async (_event, email, password) => {
             }
         };
     } catch (err) {
-        return { success: false, error: err.message || 'Erreur de connexion au serveur.' };
+        const msg = err.message || '';
+        if (msg.includes('Unexpected token') || msg.includes('is not valid JSON') || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND') || msg.includes('ETIMEDOUT')) {
+            return { success: false, error: 'Serveur de login non accessible. Réessaie dans quelques minutes.' };
+        }
+        return { success: false, error: msg || 'Erreur de connexion au serveur.' };
     }
 });
 
