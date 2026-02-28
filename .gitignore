@@ -19,5 +19,8 @@ Thumbs.db
 .env
 .env.local
 
+# Tools (ConfuserEx, etc.)
+tools/
+
 # Claude
 .claude/

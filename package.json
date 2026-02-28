@@ -1,14 +1,15 @@
 {
   "name": "matcraft-launcher",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "Custom launcher for MatCraft Minecraft server",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "concurrently -k \"cd renderer && npm run dev\" \"wait-on http://localhost:5173 && electron . --dev\"",
     "build:renderer": "cd renderer && npm run build",
-    "build:guard": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /nologo /optimize /out:lib\\dllGuardWorker.exe lib\\dllGuardWorker.cs && node lib/computeGuardHash.js",
-    "dist": "npm run build:guard && npm run build:renderer && electron-builder --win",
+    "build:guard": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /nologo /optimize /out:lib\\dllGuardWorker.exe lib\\dllGuardWorker.cs && node scripts/obfuscate-cs.js && node lib/computeGuardHash.js",
+    "obfuscate:js": "node scripts/obfuscate-js.js",
+    "dist": "npm run build:guard && npm run build:renderer && npm run obfuscate:js && electron-builder --win && git checkout -- main.js preload.js lib/dllGuard.js lib/syncMods.js lib/psWorker.js",
     "deploy": "npm run dist && scp dist/*.exe dist/latest.yml dist/*.blockmap debian@matfaction.com:/home/debian/website/azuriom/public/launcher/",
     "postinstall": "cd renderer && npm install",
     "test": "vitest run --config vitest.config.mjs",
@@ -18,7 +19,11 @@
   "author": "MatCraft",
   "license": "MIT",
   "build": {
-    "electronLanguages": ["en-US", "en-GB", "fr"],
+    "electronLanguages": [
+      "en-US",
+      "en-GB",
+      "fr"
+    ],
     "afterPack": "./lib/afterPack.js",
     "asar": true,
     "asarUnpack": [
@@ -82,6 +87,7 @@
     "concurrently": "^9.2.1",
     "electron": "^40.6.0",
     "electron-builder": "^25.1.8",
+    "javascript-obfuscator": "^5.3.0",
     "vitest": "^4.0.18",
     "wait-on": "^8.0.5"
   }

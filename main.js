@@ -34,6 +34,27 @@ let tray = null;
 
 function createWindow() {
     GAME_DIR = path.join(app.getPath('appData'), '.matcraft');
+
+    // ASAR integrity check (production only)
+    if (app.isPackaged) {
+        const asarPath = path.join(process.resourcesPath, 'app.asar');
+        const integrityPath = path.join(process.resourcesPath, 'asar-integrity.json');
+        try {
+            const expected = JSON.parse(fs.readFileSync(integrityPath, 'utf8')).sha256;
+            const actual = crypto.createHash('sha256')
+                .update(fs.readFileSync(asarPath))
+                .digest('hex');
+            if (actual !== expected) {
+                const { dialog } = require('electron');
+                dialog.showErrorBox('Erreur', 'Fichiers de l\'application corrompus. Veuillez réinstaller le launcher.');
+                app.quit();
+                return;
+            }
+        } catch {
+            // Si le fichier d'intégrité manque, on laisse passer (rétro-compatibilité)
+        }
+    }
+
     mainWindow = new BrowserWindow({
         width: 500,
         height: 580,
@@ -58,6 +79,21 @@ function createWindow() {
     } else {
         mainWindow.loadFile(path.join(__dirname, 'renderer', 'dist', 'index.html'));
     }
+
+    // Disable DevTools in production
+    if (!isDev) {
+        mainWindow.webContents.on('devtools-opened', () => {
+            mainWindow.webContents.closeDevTools();
+        });
+    }
+
+    // Block external navigation and new windows
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+        if (!url.startsWith('http://localhost:') && !url.startsWith('file://')) {
+            event.preventDefault();
+        }
+    });
+    mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 }
 
 function setupAutoUpdater() {

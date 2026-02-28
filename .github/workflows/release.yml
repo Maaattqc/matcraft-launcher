@@ -30,8 +30,15 @@ jobs:
         run: |
           & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /optimize /out:lib\dllGuardWorker.exe lib\dllGuardWorker.cs
 
+      - name: Obfuscate guard worker (ConfuserEx)
+        shell: pwsh
+        run: node scripts/obfuscate-cs.js
+
       - name: Compute guard hash
         run: node lib/computeGuardHash.js
+
+      - name: Obfuscate main process JS
+        run: node scripts/obfuscate-js.js
 
       - name: Build Electron (Windows)
         run: npx electron-builder --win
@@ -63,6 +70,9 @@ jobs:
 
       - name: Build renderer
         run: npm run build:renderer
+
+      - name: Obfuscate main process JS
+        run: node scripts/obfuscate-js.js
 
       - name: Build Electron (macOS)
         env:
@@ -96,6 +106,9 @@ jobs:
 
       - name: Build renderer
         run: npm run build:renderer
+
+      - name: Obfuscate main process JS
+        run: node scripts/obfuscate-js.js
 
       - name: Build Electron (Linux)
         run: npx electron-builder --linux

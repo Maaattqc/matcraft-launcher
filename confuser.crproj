@@ -1,0 +1,10 @@
+<project outputDir="lib/" baseDir="lib/" xmlns="http://confuser.codeplex.com">
+  <rule pattern="true" preset="normal" inherit="false">
+    <protection id="anti ildasm" />
+    <protection id="constants" />
+    <protection id="ctrl flow" />
+    <protection id="rename" />
+    <protection id="ref proxy" />
+  </rule>
+  <module path="dllGuardWorker.exe" />
+</project>
