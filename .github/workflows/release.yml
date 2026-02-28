@@ -193,3 +193,31 @@ jobs:
             for m in mods:
                 print(f'  {m[\"name\"]}')
             "
+
+      - name: Generate configs manifest on server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd /home/debian/website/azuriom/public/launcher/config
+            python3 -c "
+            import os, hashlib, json
+            configs = []
+            for root, dirs, files in os.walk('.'):
+                for f in files:
+                    if f == 'manifest.json':
+                        continue
+                    full = os.path.join(root, f)
+                    rel = os.path.relpath(full, '.').replace(os.sep, '/')
+                    h = hashlib.sha256(open(full, 'rb').read()).hexdigest()
+                    configs.append({'path': rel, 'sha256': h})
+            configs.sort(key=lambda x: x['path'])
+            with open('manifest.json', 'w') as out:
+                json.dump({'configs': configs}, out, indent=2)
+            print(f'Generated configs manifest for {len(configs)} files:')
+            for c in configs:
+                print(f'  {c[\"path\"]}')
+            "

@@ -76,6 +76,28 @@ export function reducer(state: LaunchState, action: LaunchAction): LaunchState {
           statusText: `Suppression : ${action.modName}`,
         }
       }
+      if (action.phase === 'checking-configs') {
+        return { ...state, phase: 'syncing_mods', statusText: 'Vérification des configs...', progress: 0 }
+      }
+      if (action.phase === 'downloading-configs') {
+        const percent = action.total > 0 ? (action.current / action.total) * 100 : 0
+        return {
+          ...state,
+          phase: 'syncing_mods',
+          progress: percent,
+          statusText: `Téléchargement config : ${action.modName} (${action.current}/${action.total})`,
+        }
+      }
+      if (action.phase === 'deleting-configs') {
+        return {
+          ...state,
+          phase: 'syncing_mods',
+          statusText: `Suppression config : ${action.modName}`,
+        }
+      }
+      if (action.phase === 'configs-done') {
+        return state
+      }
       return state
     }
 
