@@ -782,7 +782,7 @@ h1, h2, .server-name {
         SFTP
       </a>
       <span class="topbar-user" id="user-display"></span>
-      <button class="btn-outline" id="logout-btn">Deconnexion</button>
+      <button class="btn-outline" id="logout-btn">Déconnexion</button>
     </div>
   </div>
   <div class="stats-bar" id="stats-bar"></div>
@@ -1063,6 +1063,15 @@ h1, h2, .server-name {
     return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
   }
 
+  function formatMaxMemory(maxMem) {
+    if (!maxMem) return '?';
+    const match = maxMem.match(/^(\d+)\s*([GMgm])/);
+    if (!match) return maxMem;
+    const val = match[1];
+    const unit = match[2].toUpperCase();
+    return val + (unit === 'G' ? ' GB' : ' MB');
+  }
+
   function formatUptime(iso) {
     if (!iso) return '-';
     const diff = Date.now() - new Date(iso).getTime();
@@ -1129,8 +1138,8 @@ h1, h2, .server-name {
               <span class="info-value">${isActive && s.players ? s.players.online + '/' + s.players.max : '-'}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Memoire</span>
-              <span class="info-value">${isActive ? formatBytes(s.memory) : '-'}</span>
+              <span class="info-label">Mémoire</span>
+              <span class="info-value">${isActive ? formatBytes(s.memory) + ' / ' + formatMaxMemory(s.maxMemory) : '-'}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Uptime</span>
@@ -1141,17 +1150,17 @@ h1, h2, .server-name {
             <button class="btn-action btn-start ${isStarting ? 'loading' : ''}"
                     onclick="panel.action('${safeName}','start')"
                     ${isActive || busy ? 'disabled' : ''}>
-              <div class="spinner"></div><span>Demarrer</span>
+              <div class="spinner"></div><span>Démarrer</span>
             </button>
             <button class="btn-action btn-stop ${isStopping ? 'loading' : ''}"
                     onclick="panel.action('${safeName}','stop')"
                     ${!isActive || busy ? 'disabled' : ''}>
-              <div class="spinner"></div><span>Arreter</span>
+              <div class="spinner"></div><span>Arrêter</span>
             </button>
             <button class="btn-action btn-restart ${isRestarting ? 'loading' : ''}"
                     onclick="panel.action('${safeName}','restart')"
                     ${!isActive || busy ? 'disabled' : ''}>
-              <div class="spinner"></div><span>Redemarrer</span>
+              <div class="spinner"></div><span>Redémarrer</span>
             </button>
             <button class="btn-action btn-console"
                     onclick="panel.openConsole('${safeName}')"
@@ -1161,7 +1170,7 @@ h1, h2, .server-name {
           </div>
           ${isActive && s.playerList && s.playerList.length > 0 ? `
           <div class="player-section">
-            <div class="player-section-title">Joueurs connectes (${s.playerList.length})</div>
+            <div class="player-section-title">Joueurs connectés (${s.playerList.length})</div>
             <div class="player-list">
               ${s.playerList.map(p => {
                 const safePName = escapeHtml(p);

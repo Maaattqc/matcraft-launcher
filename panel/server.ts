@@ -169,7 +169,16 @@ async function getRcon(server: MCServer): Promise<RconClient | null> {
   }
 }
 
+// RCON config cache — populated at startup, invalidated after server restart
+const rconConfigCache = new Map<string, RconConfig | null>();
+
 function readRconConfig(server: MCServer): RconConfig | null {
+  if (server.type === 'Velocity') return null;
+  if (rconConfigCache.has(server.name)) return rconConfigCache.get(server.name)!;
+  return readRconConfigFromDisk(server);
+}
+
+function readRconConfigFromDisk(server: MCServer): RconConfig | null {
   if (server.type === 'Velocity') return null;
   try {
     const propsPath = path.join(server.dir, 'server.properties');
@@ -179,12 +188,15 @@ function readRconConfig(server: MCServer): RconConfig | null {
     const portMatch = content.match(/^rcon\.port\s*=\s*(\d+)/m);
     const passMatch = content.match(/^rcon\.password\s*=\s*(.+)/m);
     if (!portMatch || !passMatch) return null;
-    return {
+    const config: RconConfig = {
       enabled,
       port: parseInt(portMatch[1], 10),
       password: passMatch[1].trim(),
     };
+    rconConfigCache.set(server.name, config);
+    return config;
   } catch {
+    rconConfigCache.set(server.name, null);
     return null;
   }
 }
@@ -410,6 +422,59 @@ async function getServiceMemory(service: string): Promise<number | null> {
   }
 }
 
+// Batch: single `systemctl is-active svc1 svc2 ...` → one status per line
+async function getBatchServiceStatuses(services: string[]): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (services.length === 0) return result;
+  try {
+    const { stdout } = await execFileAsync('systemctl', ['is-active', ...services], {
+      timeout: 10000,
+    });
+    const lines = stdout.trim().split('\n');
+    services.forEach((svc, i) => result.set(svc, lines[i]?.trim() || 'inactive'));
+  } catch (err: any) {
+    // systemctl exits non-zero if any service is inactive, but stdout still has all statuses
+    const stdout: string = err.stdout || '';
+    const lines = stdout.trim().split('\n');
+    services.forEach((svc, i) => result.set(svc, lines[i]?.trim() || 'inactive'));
+  }
+  return result;
+}
+
+// Batch: single `systemctl show svc1 svc2 ... --property=ActiveEnterTimestamp,MemoryCurrent`
+// Returns blocks separated by blank lines, each block has the two properties.
+async function getBatchServiceMetrics(services: string[]): Promise<Map<string, { uptime: string | null; memory: number | null }>> {
+  const result = new Map<string, { uptime: string | null; memory: number | null }>();
+  if (services.length === 0) return result;
+  try {
+    const { stdout } = await execFileAsync('systemctl', [
+      'show', ...services, '--property=ActiveEnterTimestamp,MemoryCurrent',
+    ], { timeout: 10000 });
+    // Blocks are separated by empty lines
+    const blocks = stdout.split(/\n\n+/);
+    services.forEach((svc, i) => {
+      const block = blocks[i] || '';
+      let uptime: string | null = null;
+      let memory: number | null = null;
+      const tsMatch = block.match(/ActiveEnterTimestamp=(.+)/);
+      if (tsMatch && tsMatch[1].trim()) {
+        try { uptime = new Date(tsMatch[1].trim()).toISOString(); } catch {}
+      }
+      const memMatch = block.match(/MemoryCurrent=(.+)/);
+      if (memMatch) {
+        const val = memMatch[1].trim();
+        if (val && val !== '[not set]' && val !== 'infinity') {
+          memory = parseInt(val, 10);
+        }
+      }
+      result.set(svc, { uptime, memory });
+    });
+  } catch {
+    services.forEach(svc => result.set(svc, { uptime: null, memory: null }));
+  }
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Minecraft Server List Ping (MC protocol)
 // ---------------------------------------------------------------------------
@@ -567,14 +632,57 @@ async function enrichServer(server: MCServer): Promise<EnrichedServer> {
 // Cache enriched servers to avoid concurrent expensive calls
 let cachedEnriched: EnrichedServer[] = [];
 let lastEnrichTime = 0;
-const ENRICH_CACHE_MS = 3000;
+const ENRICH_CACHE_MS = 8000;
 
 async function getEnrichedServers(): Promise<EnrichedServer[]> {
   const now = Date.now();
   if (now - lastEnrichTime < ENRICH_CACHE_MS && cachedEnriched.length > 0) {
     return cachedEnriched;
   }
-  cachedEnriched = await Promise.all(serverList.map(enrichServer));
+
+  const services = serverList.map(s => s.service);
+
+  // 2 batch systemctl calls + all pings in parallel (skip Velocity — no SLP response)
+  const [statuses, metrics, ...pings] = await Promise.all([
+    getBatchServiceStatuses(services),
+    getBatchServiceMetrics(services),
+    ...serverList.map(s =>
+      s.type === 'Velocity'
+        ? Promise.resolve(null)
+        : pingMinecraft('127.0.0.1', s.port)
+    ),
+  ]);
+
+  // Distribute results + optional RCON per server
+  const enriched = await Promise.all(serverList.map(async (server, i) => {
+    const status = statuses.get(server.service) || 'inactive';
+    const met = metrics.get(server.service) || { uptime: null, memory: null };
+    const players = pings[i] as { online: number; max: number } | null;
+
+    let playerList: string[] | null = null;
+    const rconConfig = readRconConfig(server);
+    if (status === 'active' && players && players.online > 0) {
+      try {
+        const rcon = await getRcon(server);
+        if (rcon) {
+          const resp = await rcon.send('list');
+          playerList = parsePlayerList(resp);
+        }
+      } catch { /* RCON not available */ }
+    }
+
+    return {
+      ...server,
+      status,
+      uptime: met.uptime,
+      memory: met.memory,
+      players,
+      playerList,
+      rcon: rconConfig,
+    } as EnrichedServer;
+  }));
+
+  cachedEnriched = enriched;
   lastEnrichTime = Date.now();
   return cachedEnriched;
 }
@@ -625,6 +733,11 @@ let serverList: MCServer[] = [];
 function refreshServerList(): void {
   serverList = discoverServers();
   serverList.forEach((s, i) => ensureRconEnabled(s, i));
+  // Populate RCON config cache at startup
+  rconConfigCache.clear();
+  for (const s of serverList) {
+    readRconConfigFromDisk(s);
+  }
 }
 
 function getServerByName(name: string): MCServer | undefined {
@@ -657,7 +770,13 @@ const sessionMiddleware = session({
 });
 app.use(sessionMiddleware);
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  },
+}));
 
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (req.session?.user) {
@@ -813,6 +932,15 @@ app.post('/api/servers/:name/:action', requireAuth, async (req: Request, res: Re
 
   try {
     await systemctl(action, srv.service);
+    // Invalidate RCON cache after restart (config may have changed)
+    if (action === 'restart' || action === 'start') {
+      rconConfigCache.delete(srv.name);
+      // Disconnect stale RCON connection so it reconnects with fresh config
+      const oldRcon = rconPool.get(srv.name);
+      if (oldRcon) { oldRcon.disconnect(); rconPool.delete(srv.name); }
+      // Re-read config after a short delay (server needs time to start)
+      setTimeout(() => readRconConfigFromDisk(srv), 3000);
+    }
     await new Promise(r => setTimeout(r, 1000));
     const updated = await enrichServer(srv);
     res.json(updated);
@@ -996,7 +1124,7 @@ async function broadcastStatus(): Promise<void> {
   }
 }
 
-setInterval(broadcastStatus, 5000);
+setInterval(broadcastStatus, 10000);
 
 // ---------------------------------------------------------------------------
 // Start

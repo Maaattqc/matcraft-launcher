@@ -1,0 +1,13 @@
+[Unit]
+Description=FileBrowser
+After=network.target
+
+[Service]
+Type=simple
+User=filebrowser
+Group=filebrowser
+ExecStart=/usr/local/bin/filebrowser --database /etc/filebrowser/filebrowser.db
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

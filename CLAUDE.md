@@ -69,6 +69,37 @@ on matfaction.com, served at `https://matfaction.com/launcher/`.
   - `CSC_IDENTITY_AUTO_DISCOVERY=false` in CI env
 - `src/icon.png` must be >= 512x512 or the macOS build will fail
 
+## Panel deploy
+
+Le panel (`panel/`) tourne sur le serveur dédié. Après toute modification de `panel/server.ts` ou `panel/public/index.html`, **toujours déployer sur le serveur** :
+
+- **Credentials SSH** : dans `.env` à la racine du projet (HOST, PORT, USERNAME, PASSWORD)
+- **Chemin serveur** : `/home/debian/panel/` (fichiers statiques dans `/home/debian/panel/public/`)
+- **Service systemd** : `matcraft-panel` — redémarrer après upload avec `sudo systemctl restart matcraft-panel`
+- **Méthode** : utiliser `paramiko` (Python, dispo sur cette machine) pour SFTP upload + exec restart
+- **Vérification** : après restart, vérifier que le service est `active` et lire les dernières lignes de `journalctl -u matcraft-panel`
+
+## SFTP deploy
+
+Le SFTP (`sftp/`) est un FileBrowser avec branding MatCraft, derrière nginx, sur le même serveur dédié.
+
+```
+sftp/
+  branding/          → /etc/filebrowser/branding/     (CSS, JS, icônes)
+  nginx/             → /etc/nginx/sites-available/    (config reverse proxy)
+  systemd/           → /etc/systemd/system/           (service FileBrowser)
+  setup.sh           — script de setup initial (one-shot)
+  harden.py          — script de hardening (one-shot)
+```
+
+- **Credentials SSH** : même `.env` que le panel
+- **Services systemd** : `filebrowser` (port 8081) + `nginx` (proxy port 8080)
+- **URL** : `https://sftp.matcraft-mc.com` (Cloudflare Tunnel → nginx :8080 → FileBrowser :8081)
+- **Méthode deploy** : paramiko SFTP vers `/tmp/` puis `sudo cp` vers la destination (fichiers dans `/etc/` donc pas d'écriture directe), puis :
+  - Branding modifié : `sudo systemctl restart filebrowser`
+  - Nginx modifié : `sudo nginx -t && sudo systemctl reload nginx`
+  - Service modifié : `sudo systemctl daemon-reload && sudo systemctl restart filebrowser`
+
 ## Key dependencies
 
 | Package | Purpose |
