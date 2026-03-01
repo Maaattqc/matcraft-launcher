@@ -496,11 +496,257 @@ h1, h2, .server-name {
 
 /* ---------- Responsive ---------- */
 
+/* ---------- Console Button ---------- */
+
+.btn-console {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.08));
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+.btn-console:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0.12));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+}
+
+/* ---------- Player List ---------- */
+
+.player-section {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.player-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.player-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.player-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  image-rendering: pixelated;
+}
+
+.player-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.player-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-player {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.btn-kick {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+.btn-kick:hover { background: rgba(245, 158, 11, 0.25); }
+
+.btn-ban {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--destructive);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.btn-ban:hover { background: rgba(239, 68, 68, 0.25); }
+
+/* ---------- Console Modal ---------- */
+
+.console-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.console-modal {
+  width: 100%;
+  max-width: 960px;
+  height: 80vh;
+  background: #0c0c0c;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.console-title {
+  font-family: 'Space Grotesk', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.console-title .dot-live {
+  width: 8px;
+  height: 8px;
+  background: var(--success);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.console-close {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s;
+}
+.console-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--destructive);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.console-logs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #d4d4d8;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.console-logs .log-line { }
+.console-logs .log-warn { color: #fbbf24; }
+.console-logs .log-error { color: #f87171; }
+.console-logs .log-info { color: #60a5fa; }
+.console-logs .log-rcon { color: #34d399; font-style: italic; }
+.console-logs .log-rcon-error { color: #f87171; font-style: italic; }
+
+.console-input-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.console-input {
+  flex: 1;
+  padding: 9px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e4e4e7;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.console-input:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+.console-input::placeholder { color: #52525b; }
+
+.btn-send {
+  padding: 9px 16px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 6px;
+  color: #a78bfa;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-send:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.15));
+}
+
 @media (max-width: 640px) {
   .server-grid { grid-template-columns: 1fr; padding: 0 12px 12px; }
   .topbar { padding: 12px 16px; }
   .stats-bar { padding: 12px 16px; }
   .topbar-right { gap: 8px; }
+  .console-modal { height: 90vh; max-width: 100%; }
+  .player-actions { flex-direction: column; }
 }
 </style>
 </head>
@@ -543,6 +789,24 @@ h1, h2, .server-name {
   <div class="server-grid" id="server-grid"></div>
 </div>
 
+<!-- Console Modal -->
+<div id="console-overlay" class="console-overlay" style="display:none">
+  <div class="console-modal">
+    <div class="console-header">
+      <div class="console-title">
+        <div class="dot-live"></div>
+        Console — <span id="console-server-name"></span>
+      </div>
+      <button class="console-close" id="console-close-btn">&times;</button>
+    </div>
+    <div class="console-logs" id="console-logs"></div>
+    <div class="console-input-bar">
+      <input type="text" class="console-input" id="console-input" placeholder="Entrer une commande..." autocomplete="off">
+      <button class="btn-send" id="console-send-btn">Envoyer</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   const loginView = document.getElementById('login-view');
@@ -559,10 +823,140 @@ h1, h2, .server-name {
   let servers = [];
   let pendingActions = new Set();
 
+  // Console state
+  const consoleOverlay = document.getElementById('console-overlay');
+  const consoleLogs = document.getElementById('console-logs');
+  const consoleInput = document.getElementById('console-input');
+  const consoleSendBtn = document.getElementById('console-send-btn');
+  const consoleCloseBtn = document.getElementById('console-close-btn');
+  const consoleServerName = document.getElementById('console-server-name');
+  let consoleServer = null;
+  let consoleAutoScroll = true;
+  let commandHistory = [];
+  let historyIndex = -1;
+  const MAX_CONSOLE_LINES = 1000;
+
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // ------ Console ------
+
+  function openConsole(serverName) {
+    consoleServer = serverName;
+    consoleServerName.textContent = serverName;
+    consoleLogs.innerHTML = '';
+    consoleAutoScroll = true;
+    historyIndex = -1;
+    consoleOverlay.style.display = 'flex';
+    consoleInput.focus();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'console:subscribe', server: serverName }));
+    }
+  }
+
+  function closeConsole() {
+    if (consoleServer && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'console:unsubscribe' }));
+    }
+    consoleServer = null;
+    consoleOverlay.style.display = 'none';
+  }
+
+  function classifyLogLine(line) {
+    if (/\bWARN\b/i.test(line)) return 'log-warn';
+    if (/\bERROR\b/i.test(line) || /\bFATAL\b/i.test(line) || /Exception/i.test(line)) return 'log-error';
+    if (/\bINFO\b/i.test(line)) return 'log-info';
+    return 'log-line';
+  }
+
+  function appendLogLine(text, cls) {
+    const div = document.createElement('div');
+    div.className = cls || classifyLogLine(text);
+    div.textContent = text;
+    consoleLogs.appendChild(div);
+    // Limit lines
+    while (consoleLogs.children.length > MAX_CONSOLE_LINES) {
+      consoleLogs.removeChild(consoleLogs.firstChild);
+    }
+    if (consoleAutoScroll) {
+      consoleLogs.scrollTop = consoleLogs.scrollHeight;
+    }
+  }
+
+  function sendConsoleCommand() {
+    const cmd = consoleInput.value.trim();
+    if (!cmd || !consoleServer) return;
+    commandHistory.push(cmd);
+    if (commandHistory.length > 50) commandHistory.shift();
+    historyIndex = commandHistory.length;
+    consoleInput.value = '';
+    appendLogLine('> ' + cmd, 'log-rcon');
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'console:command', server: consoleServer, command: cmd }));
+    }
+  }
+
+  consoleSendBtn.addEventListener('click', sendConsoleCommand);
+  consoleInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { sendConsoleCommand(); return; }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        historyIndex--;
+        consoleInput.value = commandHistory[historyIndex];
+      }
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex < commandHistory.length - 1) {
+        historyIndex++;
+        consoleInput.value = commandHistory[historyIndex];
+      } else {
+        historyIndex = commandHistory.length;
+        consoleInput.value = '';
+      }
+    }
+  });
+
+  consoleLogs.addEventListener('scroll', () => {
+    const el = consoleLogs;
+    consoleAutoScroll = (el.scrollHeight - el.scrollTop - el.clientHeight) < 40;
+  });
+
+  consoleCloseBtn.addEventListener('click', closeConsole);
+  consoleOverlay.addEventListener('click', (e) => {
+    if (e.target === consoleOverlay) closeConsole();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && consoleServer) closeConsole();
+  });
+
+  // ------ Player actions ------
+
+  async function kickPlayer(serverName, playerName) {
+    if (!confirm(`Kick ${playerName} du serveur ${serverName} ?`)) return;
+    try {
+      await fetch(`/api/servers/${serverName}/kick`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player: playerName }),
+      });
+    } catch {}
+  }
+
+  async function banPlayer(serverName, playerName) {
+    const reason = prompt(`Bannir ${playerName} du serveur ${serverName}.\nRaison (optionnel) :`);
+    if (reason === null) return; // cancelled
+    try {
+      await fetch(`/api/servers/${serverName}/ban`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player: playerName, reason: reason || undefined }),
+      });
+    } catch {}
   }
 
   // ------ Auth ------
@@ -759,7 +1153,29 @@ h1, h2, .server-name {
                     ${!isActive || busy ? 'disabled' : ''}>
               <div class="spinner"></div><span>Redemarrer</span>
             </button>
+            <button class="btn-action btn-console"
+                    onclick="panel.openConsole('${safeName}')"
+                    ${!isActive ? 'disabled' : ''}>
+              <span>Console</span>
+            </button>
           </div>
+          ${isActive && s.playerList && s.playerList.length > 0 ? `
+          <div class="player-section">
+            <div class="player-section-title">Joueurs connectes (${s.playerList.length})</div>
+            <div class="player-list">
+              ${s.playerList.map(p => {
+                const safePName = escapeHtml(p);
+                return `<div class="player-item">
+                  <img class="player-avatar" src="https://mc-heads.net/avatar/${encodeURIComponent(p)}/20" alt="${safePName}" loading="lazy">
+                  <span class="player-name">${safePName}</span>
+                  <div class="player-actions">
+                    <button class="btn-player btn-kick" onclick="panel.kick('${safeName}','${safePName}')">Kick</button>
+                    <button class="btn-player btn-ban" onclick="panel.ban('${safeName}','${safePName}')">Ban</button>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>` : ''}
         </div>
       `;
     }).join('');
@@ -778,8 +1194,24 @@ h1, h2, .server-name {
         if (msg.type === 'status' && Array.isArray(msg.servers)) {
           servers = msg.servers;
           renderServers();
+        } else if (msg.type === 'console:history' && msg.server === consoleServer) {
+          consoleLogs.innerHTML = '';
+          for (const line of msg.lines) appendLogLine(line);
+        } else if (msg.type === 'console:log' && msg.server === consoleServer) {
+          appendLogLine(msg.line);
+        } else if (msg.type === 'console:response' && msg.server === consoleServer) {
+          appendLogLine(msg.response, 'log-rcon');
+        } else if (msg.type === 'console:error' && msg.server === consoleServer) {
+          appendLogLine('[ERROR] ' + msg.error, 'log-rcon-error');
         }
       } catch {}
+    };
+
+    ws.onopen = () => {
+      // Re-subscribe to console if it was open
+      if (consoleServer) {
+        ws.send(JSON.stringify({ type: 'console:subscribe', server: consoleServer }));
+      }
     };
 
     ws.onclose = () => {
@@ -793,7 +1225,12 @@ h1, h2, .server-name {
     if (ws) { ws.close(); ws = null; }
   }
 
-  window.panel = { action: serverAction };
+  window.panel = {
+    action: serverAction,
+    openConsole,
+    kick: kickPlayer,
+    ban: banPlayer,
+  };
   checkAuth();
 })();
 </script>
