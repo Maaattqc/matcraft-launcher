@@ -43,14 +43,20 @@ def main():
 
     # --- 1. Upload branding files ---
     print("=== 1/5 — Upload branding files ===")
-    run(ssh, "mkdir -p /tmp/filebrowser-branding", sudo=False)
+    run(ssh, "mkdir -p /tmp/filebrowser-branding/img/icons", sudo=False)
     for fname in ["custom.css", "theme-toggle.js"]:
         local = os.path.join(BRANDING_DIR, fname)
         remote = f"/tmp/filebrowser-branding/{fname}"
         print(f"  Uploading {fname}...")
         sftp.put(local, remote)
+    # Upload favicon
+    for fname in ["img/icons/favicon.png", "img/icons/apple-touch-icon.png"]:
+        local = os.path.join(BRANDING_DIR, fname)
+        remote = f"/tmp/filebrowser-branding/{fname}"
+        print(f"  Uploading {fname}...")
+        sftp.put(local, remote)
     # Move to final location with sudo
-    run(ssh, "mkdir -p /etc/filebrowser/branding && cp /tmp/filebrowser-branding/* /etc/filebrowser/branding/ && rm -rf /tmp/filebrowser-branding", sudo=True)
+    run(ssh, "mkdir -p /etc/filebrowser/branding/img/icons && cp -r /tmp/filebrowser-branding/* /etc/filebrowser/branding/ && rm -rf /tmp/filebrowser-branding", sudo=True)
     print("  Branding files deployed.\n")
 
     # --- 2. Stop FileBrowser + update config ---
@@ -83,11 +89,16 @@ def main():
 
             client_max_body_size 10G;
 
-            # Serve theme-toggle.js directly (FileBrowser only auto-serves custom.css, not JS)
+            # Serve branding static files directly (FileBrowser only auto-serves custom.css)
             location = /static/theme-toggle.js {
                 alias /etc/filebrowser/branding/theme-toggle.js;
                 default_type application/javascript;
                 add_header Content-Type "application/javascript" always;
+                add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+            }
+
+            location /static/img/icons/ {
+                alias /etc/filebrowser/branding/img/icons/;
                 add_header Cache-Control "no-cache, no-store, must-revalidate" always;
             }
 
@@ -108,8 +119,11 @@ def main():
                 # Strip FileBrowser cache headers (it sends max-age=86400)
                 proxy_hide_header Cache-Control;
 
+                # Replace favicon SVG with our PNG
+                sub_filter 'type="image/svg+xml" href="/static/img/icons/favicon.svg"' 'type="image/png" href="/static/img/icons/favicon.png"';
+
                 # Inject dark theme inline + load toggle script (default to dark)
-                sub_filter '</head>' '<script>try{var t=localStorage.getItem("filebrowser-theme")||"dark";if(t==="dark")document.documentElement.classList.add("dark","theme-dark")}catch(e){}</script><script defer src="/static/theme-toggle.js?v=8"></script></head>';
+                sub_filter '</head>' '<script>try{var t=localStorage.getItem("filebrowser-theme")||"dark";if(t==="dark")document.documentElement.classList.add("dark","theme-dark")}catch(e){}</script><script defer src="/static/theme-toggle.js?v=9"></script></head>';
                 sub_filter_once on;
                 sub_filter_types text/html;
 
