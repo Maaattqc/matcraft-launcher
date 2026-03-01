@@ -14,7 +14,7 @@ USER = "debian"
 PASSWORD = "NNFjZ3enYfj4OyC3"
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BRANDING_DIR = os.path.join(SCRIPT_DIR, "filebrowser-branding")
+BRANDING_DIR = os.path.join(SCRIPT_DIR, "branding")
 
 def run(ssh, cmd, sudo=False):
     """Run a command via SSH, print output, raise on failure."""
