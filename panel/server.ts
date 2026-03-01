@@ -445,7 +445,7 @@ async function pingMinecraft(host: string, port: number): Promise<{ online: numb
     const timeout = setTimeout(() => {
       socket.destroy();
       resolve(null);
-    }, 3000);
+    }, 2000);
 
     const socket = net.createConnection({ host, port }, () => {
       // Build Handshake packet (ID=0x00)
@@ -526,27 +526,57 @@ function parsePlayerList(response: string): string[] {
   return match[1].split(',').map(n => n.trim()).filter(n => n.length > 0);
 }
 
-async function enrichServer(server: MCServer): Promise<EnrichedServer> {
-  const [status, uptime, memory, players] = await Promise.all([
-    getServiceStatus(server.service),
-    getServiceUptime(server.service),
-    getServiceMemory(server.service),
-    pingMinecraft('127.0.0.1', server.port),
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms)),
   ]);
+}
 
-  let playerList: string[] | null = null;
-  const rconConfig = readRconConfig(server);
-  if (status === 'active' && players && players.online > 0) {
-    try {
-      const rcon = await getRcon(server);
-      if (rcon) {
-        const resp = await rcon.send('list');
-        playerList = parsePlayerList(resp);
-      }
-    } catch { /* RCON not available */ }
+async function enrichServer(server: MCServer): Promise<EnrichedServer> {
+  const enrichOne = async (): Promise<EnrichedServer> => {
+    const [status, uptime, memory, players] = await Promise.all([
+      getServiceStatus(server.service),
+      getServiceUptime(server.service),
+      getServiceMemory(server.service),
+      pingMinecraft('127.0.0.1', server.port),
+    ]);
+
+    let playerList: string[] | null = null;
+    const rconConfig = readRconConfig(server);
+    if (status === 'active' && players && players.online > 0) {
+      try {
+        const rcon = await getRcon(server);
+        if (rcon) {
+          const resp = await rcon.send('list');
+          playerList = parsePlayerList(resp);
+        }
+      } catch { /* RCON not available */ }
+    }
+
+    return { ...server, status, uptime, memory, players, playerList, rcon: rconConfig };
+  };
+
+  // Hard timeout per server — never block longer than 5s
+  return withTimeout(enrichOne(), 5000, {
+    ...server, status: 'unknown', uptime: null, memory: null,
+    players: null, playerList: null, rcon: null,
+  });
+}
+
+// Cache enriched servers to avoid concurrent expensive calls
+let cachedEnriched: EnrichedServer[] = [];
+let lastEnrichTime = 0;
+const ENRICH_CACHE_MS = 3000;
+
+async function getEnrichedServers(): Promise<EnrichedServer[]> {
+  const now = Date.now();
+  if (now - lastEnrichTime < ENRICH_CACHE_MS && cachedEnriched.length > 0) {
+    return cachedEnriched;
   }
-
-  return { ...server, status, uptime, memory, players, playerList, rcon: rconConfig };
+  cachedEnriched = await Promise.all(serverList.map(enrichServer));
+  lastEnrichTime = Date.now();
+  return cachedEnriched;
 }
 
 // ---------------------------------------------------------------------------
@@ -696,7 +726,7 @@ app.get('/api/me', (req: Request, res: Response) => {
 
 app.get('/api/servers', requireAuth, async (_req: Request, res: Response) => {
   try {
-    const enriched = await Promise.all(serverList.map(enrichServer));
+    const enriched = await getEnrichedServers();
     res.json(enriched);
   } catch (err) {
     console.error('[API] Failed to list servers:', (err as Error).message);
@@ -945,10 +975,14 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('error', () => cleanupClient(ws));
 });
 
+let broadcastRunning = false;
+
 async function broadcastStatus(): Promise<void> {
   if (wss.clients.size === 0) return;
+  if (broadcastRunning) return; // prevent piling up
+  broadcastRunning = true;
   try {
-    const enriched = await Promise.all(serverList.map(enrichServer));
+    const enriched = await getEnrichedServers();
     const data = JSON.stringify({ type: 'status', servers: enriched });
     for (const client of wss.clients) {
       if (client.readyState === WebSocket.OPEN) {
@@ -957,6 +991,8 @@ async function broadcastStatus(): Promise<void> {
     }
   } catch (err) {
     console.error('Broadcast error:', (err as Error).message);
+  } finally {
+    broadcastRunning = false;
   }
 }
 
