@@ -109,7 +109,7 @@ def main():
                 proxy_hide_header Cache-Control;
 
                 # Inject dark theme inline + load toggle script (default to dark)
-                sub_filter '</head>' '<script>try{var t=localStorage.getItem("filebrowser-theme")||"dark";if(t==="dark")document.documentElement.classList.add("dark","theme-dark")}catch(e){}</script><script defer src="/static/theme-toggle.js?v=6"></script></head>';
+                sub_filter '</head>' '<script>try{var t=localStorage.getItem("filebrowser-theme")||"dark";if(t==="dark")document.documentElement.classList.add("dark","theme-dark")}catch(e){}</script><script defer src="/static/theme-toggle.js?v=8"></script></head>';
                 sub_filter_once on;
                 sub_filter_types text/html;
 

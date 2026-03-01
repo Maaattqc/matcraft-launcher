@@ -306,13 +306,15 @@ html.theme-dark #theme-toggle-btn svg {
 #panel-nav-btn {
   display: flex;
   align-items: center;
-  gap: 0.5em;
+  justify-content: center;
+  gap: 0.6em;
   width: 100%;
-  padding: .5em;
+  padding: 1.5em 1em;
   border: none;
   background: transparent;
   color: var(--action);
-  font-size: 1.1em;
+  font-size: 2em;
+  font-weight: 700;
   text-decoration: none;
   cursor: pointer;
   transition: background 0.2s;
@@ -325,8 +327,8 @@ html.theme-dark #theme-toggle-btn svg {
 }
 
 #panel-nav-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
 }
 
