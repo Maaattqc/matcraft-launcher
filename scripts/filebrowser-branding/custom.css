@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 /* ============================================
    MatCraft FileBrowser Theme
    Light mode = default FileBrowser
@@ -6,26 +8,21 @@
    ============================================ */
 
 /* --- Hide sidebar credits/version (light + dark) --- */
-nav .credits,
-#nav .credits,
-.sidebar .credits {
+.credits {
   display: none !important;
 }
 
-/* --- Font --- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 /* ============================================
    DARK MODE — CSS Variable Overrides
-   FileBrowser uses :root vars for ALL colors.
-   We override them on html.theme-dark so every
-   element picks up the dark palette automatically.
+   FileBrowser uses :root.dark for its dark palette.
+   We override on :root.dark (same specificity, later
+   in cascade = wins) with MatCraft black colors.
    ============================================ */
 
-html.theme-dark {
+:root.dark {
   color-scheme: dark;
 
-  /* Core palette */
+  /* Core palette — MatCraft black, not FB grey */
   --background: #0a0a0f;
   --surfacePrimary: #111118;
   --surfaceSecondary: #1a1a24;
@@ -112,9 +109,39 @@ html.theme-dark #login .wrong {
   padding: 0.5rem 0.75rem;
 }
 
+/* --- Force dark on body & main containers (belt-and-suspenders) --- */
+html.theme-dark body,
+html.theme-dark #app {
+  background: #0a0a0f !important;
+  color: #f0f0f5 !important;
+}
+
+/* --- Sidebar dark --- */
+html.theme-dark nav {
+  background: #111118 !important;
+}
+
 /* --- Header enhancements --- */
 html.theme-dark header {
+  background: #111118 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* --- Breadcrumbs dark --- */
+html.theme-dark .breadcrumbs {
+  background: #0a0a0f !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* --- Force dark listing items --- */
+html.theme-dark #listing .item {
+  background: #111118 !important;
+  color: #f0f0f5 !important;
+}
+
+html.theme-dark #listing.list .item {
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* --- Item hover glass effect --- */
@@ -270,4 +297,44 @@ html.theme-dark #theme-toggle-btn:hover {
 html.theme-dark #theme-toggle-btn svg {
   color: #f0f0f5;
   stroke: #f0f0f5;
+}
+
+/* ============================================
+   PANEL NAVIGATION BUTTON (sidebar)
+   ============================================ */
+
+#panel-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  width: 100%;
+  padding: .5em;
+  border: none;
+  background: transparent;
+  color: var(--action);
+  font-size: 1.1em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-top: 1px solid var(--divider);
+  white-space: nowrap;
+}
+
+#panel-nav-btn:hover {
+  background: var(--hover);
+}
+
+#panel-nav-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+html.theme-dark #panel-nav-btn {
+  color: #a0a0b8;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html.theme-dark #panel-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
