@@ -1526,6 +1526,7 @@ h1, h2, .server-name {
     adminContent.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Chargement...</div>';
     try {
       const res = await fetch('/api/admin/users');
+      if (res.status === 401) { showLogin(); return; }
       if (!res.ok) { adminContent.innerHTML = '<div class="admin-empty">Erreur de chargement</div>'; return; }
       adminData = await res.json();
       renderAdmin();
