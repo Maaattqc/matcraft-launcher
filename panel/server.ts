@@ -738,6 +738,7 @@ async function pingMinecraft(host: string, port: number): Promise<{ online: numb
 
     socket.on('close', () => {
       clearTimeout(timeout);
+      resolve(null);
     });
   });
 }
@@ -811,7 +812,6 @@ async function getEnrichedServers(): Promise<EnrichedServer[]> {
         : pingMinecraft('127.0.0.1', s.port)
     ),
   ]);
-
   // Distribute results + optional RCON per server
   const enriched = await Promise.all(serverList.map(async (server, i) => {
     const status = statuses.get(server.service) || 'inactive';
@@ -840,7 +840,6 @@ async function getEnrichedServers(): Promise<EnrichedServer[]> {
       rcon: rconConfig,
     } as EnrichedServer;
   }));
-
   cachedEnriched = enriched;
   lastEnrichTime = Date.now();
   return cachedEnriched;
@@ -954,7 +953,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
     next();
     return;
   }
-  console.log(`[AUTH] 401 on ${req.method} ${req.path} (no session user)`);
   res.status(401).json({ error: 'Not authenticated' });
 }
 
@@ -1042,8 +1040,16 @@ app.post('/api/login', async (req: Request, res: Response) => {
     }
     req.session.user = { username };
     ensureUserTracked(username);
-    console.log(`[AUTH] User logged in: ${username}`);
-    res.json({ ok: true, username });
+    // Explicitly save session before responding to guarantee Set-Cookie is sent
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        console.error('[AUTH] Session save failed:', saveErr);
+        res.status(500).json({ error: 'Internal server error' });
+        return;
+      }
+      console.log(`[AUTH] User logged in: ${username} (session ${req.sessionID})`);
+      res.json({ ok: true, username });
+    });
   });
 });
 
