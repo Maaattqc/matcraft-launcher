@@ -376,6 +376,8 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
                 'shaderpacks',
                 'screenshots',
                 'logs',
+                'log_configs',
+                'zoomify.json',
                 'options.txt',
                 'servers.dat'
             ],

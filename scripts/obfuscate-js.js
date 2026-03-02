@@ -17,18 +17,17 @@ const CONFIG = {
   // Renaming
   renameGlobals: false,
   identifierNamesGenerator: 'hexadecimal',
-  // String encryption
+  // String protection (base64 instead of RC4 to avoid malware signatures)
   stringArray: true,
-  stringArrayEncoding: ['rc4'],
-  stringArrayThreshold: 1,
+  stringArrayEncoding: ['base64'],
+  stringArrayThreshold: 0.75,
   splitStrings: true,
-  splitStringsChunkLength: 5,
-  // Control flow
+  splitStringsChunkLength: 10,
+  // Control flow (reduced to avoid heuristic triggers)
   controlFlowFlattening: true,
-  controlFlowFlatteningThreshold: 0.75,
-  // Dead code
-  deadCodeInjection: true,
-  deadCodeInjectionThreshold: 0.4,
+  controlFlowFlatteningThreshold: 0.3,
+  // Dead code injection disabled (anti-analysis technique flagged by AV)
+  deadCodeInjection: false,
   // Misc
   numbersToExpressions: true,
   transformObjectKeys: true,
