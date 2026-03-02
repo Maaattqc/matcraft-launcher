@@ -228,6 +228,7 @@ interface MCServer {
   screen: string;
   minMemory: string;
   maxMemory: string;
+  javaArgs: string;
   service: string;
 }
 
@@ -423,6 +424,7 @@ function parseStartScript(name: string, dir: string, script: string): MCServer |
   const screenMatch = script.match(/SCREEN_NAME=["']?([^\s"']+)/);
   const minMemMatch = script.match(/MIN_MEMORY=["']?([^\s"']+)/);
   const maxMemMatch = script.match(/MAX_MEMORY=["']?([^\s"']+)/);
+  const argsMatch = script.match(/JAVA_ARGS=["']([^"']+)["']/);
 
   const jar = jarMatch?.[1] ?? null;
   if (!jar) return null;
@@ -439,6 +441,7 @@ function parseStartScript(name: string, dir: string, script: string): MCServer |
     screen: screenMatch?.[1] ?? name,
     minMemory: minMemMatch?.[1] ?? '1G',
     maxMemory: maxMemMatch?.[1] ?? '2G',
+    javaArgs: argsMatch?.[1] ?? '',
     service: `minecraft-${name}`,
   };
 }
@@ -578,6 +581,62 @@ async function getBatchServiceMetrics(services: string[]): Promise<Map<string, {
     services.forEach(svc => result.set(svc, { uptime: null, memory: null }));
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Service file sync — regenerate systemd .service from start.sh values
+// ---------------------------------------------------------------------------
+
+function parseMemoryMB(mem: string): number {
+  const m = mem.match(/^(\d+)([GgMm]?)$/);
+  if (!m) return 2048;
+  const val = parseInt(m[1], 10);
+  const unit = m[2]?.toUpperCase() || 'M';
+  return unit === 'G' ? val * 1024 : val;
+}
+
+function formatMemory(mb: number): string {
+  return mb >= 1024 && mb % 1024 === 0 ? `${mb / 1024}G` : `${mb}M`;
+}
+
+async function syncServiceFile(srv: MCServer): Promise<void> {
+  const maxMB = parseMemoryMB(srv.maxMemory);
+  const memoryMax = formatMemory(maxMB + 1024); // +1G headroom for JVM overhead
+
+  const javaArgsStr = srv.javaArgs ? ` ${srv.javaArgs}` : '';
+  const content = `[Unit]
+Description=MatCraft Server - ${srv.name}
+After=network.target
+
+[Service]
+User=debian
+Group=debian
+WorkingDirectory=${srv.dir}
+ExecStart=/usr/bin/java -Xms${srv.minMemory} -Xmx${srv.maxMemory}${javaArgsStr} -jar ${srv.jar} nogui
+ExecStop=/bin/kill -SIGTERM $MAINPID
+Restart=on-failure
+RestartSec=10
+SuccessExitStatus=0 130 143
+MemoryMax=${memoryMax}
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=minecraft-${srv.name}
+
+[Install]
+WantedBy=multi-user.target
+`;
+
+  const tmpPath = `/tmp/${srv.service}.service`;
+  const destPath = `/etc/systemd/system/${srv.service}.service`;
+
+  try {
+    fs.writeFileSync(tmpPath, content, 'utf8');
+    await execFileAsync('sudo', ['cp', tmpPath, destPath], { timeout: 5000 });
+    await execFileAsync('sudo', ['systemctl', 'daemon-reload'], { timeout: 10000 });
+    console.log(`[SYNC] Regenerated ${srv.service}.service`);
+  } catch (err) {
+    console.error(`[SYNC] Failed to sync ${srv.service}.service:`, (err as Error).message);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -838,6 +897,12 @@ let serverList: MCServer[] = [];
 function refreshServerList(): void {
   serverList = discoverServers();
   serverList.forEach((s, i) => ensureRconEnabled(s, i));
+  // Sync systemd service files from start.sh at startup
+  for (const s of serverList) {
+    syncServiceFile(s).catch(err =>
+      console.error(`[SYNC] Startup sync failed for ${s.name}:`, err.message)
+    );
+  }
   // Populate RCON config cache at startup
   rconConfigCache.clear();
   for (const s of serverList) {
@@ -1133,6 +1198,19 @@ app.post('/api/servers/:name/:action', requireAuth, async (req: Request, res: Re
   console.log(`[ACTION] ${username} ${action} ${srv.name}`);
 
   try {
+    // Re-sync systemd service file from start.sh before starting/restarting
+    if (action === 'start' || action === 'restart') {
+      const startSh = path.join(srv.dir, 'start.sh');
+      if (fs.existsSync(startSh)) {
+        const script = fs.readFileSync(startSh, 'utf8');
+        const freshSrv = parseStartScript(srv.name, srv.dir, script);
+        if (freshSrv) {
+          Object.assign(srv, freshSrv);
+          await syncServiceFile(freshSrv);
+        }
+      }
+    }
+
     await systemctl(action, srv.service);
     // Invalidate RCON cache after restart (config may have changed)
     if (action === 'restart' || action === 'start') {
