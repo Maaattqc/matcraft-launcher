@@ -1,15 +1,14 @@
 {
   "name": "matcraft-launcher",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "description": "Custom launcher for MatCraft Minecraft server",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "concurrently -k \"cd renderer && npm run dev\" \"wait-on http://localhost:5173 && electron . --dev\"",
     "build:renderer": "cd renderer && npm run build",
-    "build:guard": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /nologo /optimize /out:lib\\dllGuardWorker.exe lib\\dllGuardWorker.cs && node lib/computeGuardHash.js",
     "obfuscate:js": "node scripts/obfuscate-js.js",
-    "dist": "npm run build:guard && npm run build:renderer && npm run obfuscate:js && electron-builder --win && git checkout -- main.js preload.js lib/dllGuard.js lib/syncMods.js lib/psWorker.js",
+    "dist": "npm run build:renderer && npm run obfuscate:js && electron-builder --win && git checkout -- main.js preload.js lib/dllGuard.js lib/syncMods.js",
     "deploy": "npm run dist && scp dist/*.exe dist/latest.yml dist/*.blockmap debian@matfaction.com:/home/debian/website/azuriom/public/launcher/",
     "postinstall": "cd renderer && npm install",
     "test": "vitest run --config vitest.config.mjs",
@@ -26,9 +25,7 @@
     ],
     "afterPack": "./lib/afterPack.js",
     "asar": true,
-    "asarUnpack": [
-      "lib/dllGuardWorker.exe"
-    ],
+    "asarUnpack": [],
     "appId": "com.matcraft.launcher",
     "productName": "MatCraft",
     "directories": {
@@ -38,6 +35,10 @@
       "main.js",
       "preload.js",
       "lib/**/*",
+      "!lib/dllGuardWorker.*",
+      "!lib/psWorker.js",
+      "!lib/computeGuardHash.js",
+      "!lib/guardHash.json",
       "renderer/dist/**/*",
       "src/icon.png"
     ],

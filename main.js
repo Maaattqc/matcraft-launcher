@@ -264,25 +264,6 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
     }
 
     try {
-        // Verify anti-cheat binary exists and integrity (Windows only)
-        if (process.platform === 'win32') {
-            const guardPath = path.join(
-                __dirname.replace('app.asar', 'app.asar.unpacked'),
-                'lib', 'dllGuardWorker.exe'
-            );
-            if (!fs.existsSync(guardPath)) {
-                return { success: false, error: 'Fichiers de sécurité manquants. Réinstallez le launcher.' };
-            }
-            if (app.isPackaged) {
-                const { sha256: expected } = require('./lib/guardHash.json');
-                const actual = crypto.createHash('sha256')
-                    .update(fs.readFileSync(guardPath)).digest('hex');
-                if (actual !== expected) {
-                    return { success: false, error: 'Fichiers de sécurité corrompus. Réinstallez le launcher.' };
-                }
-            }
-        }
-
         // Ensure game directory exists
         if (!fs.existsSync(GAME_DIR)) {
             fs.mkdirSync(GAME_DIR, { recursive: true });

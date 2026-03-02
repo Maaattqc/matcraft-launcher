@@ -9,7 +9,6 @@ const FILES = [
   'preload.js',
   'lib/dllGuard.js',
   'lib/syncMods.js',
-  'lib/psWorker.js',
 ];
 
 const CONFIG = {
