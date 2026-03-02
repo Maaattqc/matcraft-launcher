@@ -205,8 +205,16 @@ function readRconConfigFromDisk(server: MCServer): RconConfig | null {
 // Types
 // ---------------------------------------------------------------------------
 
+type ActionPermission = 'start' | 'stop' | 'restart' | 'console' | 'kick' | 'ban';
+
+// Per-server permissions: keys = server names or "*" (wildcard for all), values = allowed actions
+type UserPermissions = Record<string, ActionPermission[]>;
+
+const ALL_ACTIONS: ActionPermission[] = ['start', 'stop', 'restart', 'console', 'kick', 'ban'];
+
 interface PanelConfig {
   sessionSecret?: string;
+  users?: Record<string, UserPermissions>;
 }
 
 type ServerType = 'Fabric' | 'Purpur' | 'Velocity' | 'Paper' | 'Spigot' | 'Vanilla';
@@ -267,9 +275,83 @@ if (!config.sessionSecret) {
   console.log('Generated new session secret and saved to config.json');
 }
 
+if (!config.users) {
+  config.users = {};
+}
+
+// Migrate old format { actions: [], servers: [] } → new per-server format
+(function migratePermissions() {
+  if (!config.users) return;
+  let changed = false;
+  for (const [name, perms] of Object.entries(config.users)) {
+    if (perms && 'actions' in perms && 'servers' in perms && Array.isArray((perms as any).actions)) {
+      const old = perms as any as { actions: ActionPermission[]; servers: string[] };
+      const migrated: UserPermissions = {};
+      if (old.servers.includes('*')) {
+        migrated['*'] = old.actions;
+      } else {
+        for (const srv of old.servers) {
+          migrated[srv] = [...old.actions];
+        }
+        if (old.servers.length === 0) {
+          migrated['*'] = [];
+        }
+      }
+      config.users[name] = migrated;
+      changed = true;
+      console.log(`[PERMS] Migrated permissions for ${name} to per-server format`);
+    }
+  }
+  if (changed) fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+})();
+
+function saveConfig(): void {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+}
+
+function getUserPermissions(username: string): { perms: UserPermissions; isAdmin: boolean } {
+  if (username === 'admin') {
+    return { perms: { '*': [...ALL_ACTIONS] }, isAdmin: true };
+  }
+  const perms = config.users?.[username];
+  if (!perms) {
+    return { perms: { '*': [] }, isAdmin: false };
+  }
+  return { perms, isAdmin: false };
+}
+
+function canAccessServer(username: string, serverName: string): boolean {
+  const { perms, isAdmin } = getUserPermissions(username);
+  if (isAdmin) return true;
+  if ('*' in perms) return true;
+  return serverName in perms;
+}
+
+function canPerformAction(username: string, action: string, serverName: string): boolean {
+  const { perms, isAdmin } = getUserPermissions(username);
+  if (isAdmin) return true;
+  // Specific server overrides wildcard
+  const serverActions = perms[serverName] ?? perms['*'];
+  if (!serverActions) return false;
+  return serverActions.includes(action as ActionPermission);
+}
+
+function ensureUserTracked(username: string): void {
+  if (username === 'admin') return;
+  if (!config.users) config.users = {};
+  if (!config.users[username]) {
+    config.users[username] = { '*': [] };
+    saveConfig();
+    console.log(`[PERMS] New user tracked: ${username} (read-only)`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Auth via FileBrowser API (shared credentials)
 // ---------------------------------------------------------------------------
+
+// Cache the admin's FileBrowser token to fetch user lists
+let fbAdminToken: string | null = null;
 
 async function authenticateViaFileBrowser(username: string, password: string): Promise<boolean> {
   try {
@@ -278,9 +360,32 @@ async function authenticateViaFileBrowser(username: string, password: string): P
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
-    return res.ok; // 200 = valid credentials, 403 = invalid
+    if (!res.ok) return false;
+    // Store admin token for user listing
+    if (username === 'admin') {
+      fbAdminToken = await res.text();
+    }
+    return true;
   } catch {
     return false;
+  }
+}
+
+async function getFileBrowserUsers(): Promise<string[]> {
+  if (!fbAdminToken) return [];
+  try {
+    const res = await fetch(`${FILEBROWSER_URL}/api/users`, {
+      headers: { 'X-Auth': fbAdminToken },
+    });
+    if (!res.ok) {
+      // Token expired — clear it
+      if (res.status === 401 || res.status === 403) fbAdminToken = null;
+      return [];
+    }
+    const users = await res.json() as { username: string }[];
+    return users.map(u => u.username).filter(u => u !== 'admin');
+  } catch {
+    return [];
   }
 }
 
@@ -757,6 +862,16 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Security headers
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
 const sessionMiddleware = session({
   secret: config.sessionSecret!,
   resave: false,
@@ -774,6 +889,8 @@ app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res, filePath) {
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
     }
   },
 }));
@@ -786,9 +903,62 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
   res.status(401).json({ error: 'Not authenticated' });
 }
 
+function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  if (req.session?.user?.username === 'admin') {
+    next();
+    return;
+  }
+  res.status(403).json({ error: 'Admin access required' });
+}
+
+function requireAction(action: ActionPermission) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const username = req.session?.user?.username;
+    if (!username) { res.status(401).json({ error: 'Not authenticated' }); return; }
+    const serverName = req.params.name;
+    if (!canPerformAction(username, action, serverName)) {
+      res.status(403).json({ error: 'Permission denied' });
+      return;
+    }
+    next();
+  };
+}
+
+// --- Rate limiting ---
+
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX = 10; // max attempts per window
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
+// Cleanup stale entries every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of loginAttempts) {
+    if (now > entry.resetAt) loginAttempts.delete(ip);
+  }
+}, 30 * 60 * 1000);
+
 // --- Auth routes ---
 
 app.post('/api/login', async (req: Request, res: Response) => {
+  const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+  if (isRateLimited(clientIp)) {
+    console.log(`[AUTH] Rate limited login attempt from ${clientIp}`);
+    res.status(429).json({ error: 'Too many login attempts. Try again later.' });
+    return;
+  }
+
   const { username, password } = req.body as { username?: string; password?: string };
 
   // Input validation — prevent DoS with massive payloads
@@ -816,6 +986,7 @@ app.post('/api/login', async (req: Request, res: Response) => {
       return;
     }
     req.session.user = { username };
+    ensureUserTracked(username);
     console.log(`[AUTH] User logged in: ${username}`);
     res.json({ ok: true, username });
   });
@@ -835,7 +1006,9 @@ app.post('/api/logout', (req: Request, res: Response) => {
 
 app.get('/api/me', (req: Request, res: Response) => {
   if (req.session?.user) {
-    res.json(req.session.user);
+    const { username } = req.session.user;
+    const { perms, isAdmin } = getUserPermissions(username);
+    res.json({ username, isAdmin, permissions: perms });
     return;
   }
   res.status(401).json({ error: 'Not authenticated' });
@@ -843,10 +1016,17 @@ app.get('/api/me', (req: Request, res: Response) => {
 
 // --- Server routes ---
 
-app.get('/api/servers', requireAuth, async (_req: Request, res: Response) => {
+app.get('/api/servers', requireAuth, async (req: Request, res: Response) => {
   try {
+    const username = req.session!.user!.username;
     const enriched = await getEnrichedServers();
-    res.json(enriched);
+    const filtered = enriched.filter(s => canAccessServer(username, s.name));
+    // Strip sensitive fields (rcon passwords) before sending to client
+    const safe = filtered.map(({ rcon, ...rest }) => ({
+      ...rest,
+      rcon: rcon ? { enabled: rcon.enabled, port: rcon.port } : null,
+    }));
+    res.json(safe);
   } catch (err) {
     console.error('[API] Failed to list servers:', (err as Error).message);
     res.status(500).json({ error: 'Internal server error' });
@@ -854,8 +1034,20 @@ app.get('/api/servers', requireAuth, async (_req: Request, res: Response) => {
 });
 
 const PLAYER_NAME_REGEX = /^[a-zA-Z0-9_]{1,16}$/;
+const REASON_REGEX = /^[a-zA-Z0-9À-ÿ\s.,!?'-]{0,150}$/;
+
+// Commands that only admin can execute via console (dangerous server-level commands)
+const ADMIN_ONLY_COMMANDS = new Set([
+  'stop', 'op', 'deop', 'ban', 'ban-ip', 'pardon', 'pardon-ip',
+  'whitelist', 'save-all', 'save-off', 'save-on', 'reload',
+  'debug', 'publish', 'transfer', 'jvm', 'perf',
+]);
 
 app.get('/api/servers/:name/players', requireAuth, async (req: Request, res: Response) => {
+  const username = req.session!.user!.username;
+  if (!canAccessServer(username, req.params.name)) {
+    res.status(403).json({ error: 'Permission denied' }); return;
+  }
   const srv = getServerByName(req.params.name);
   if (!srv) { res.status(404).json({ error: 'Server not found' }); return; }
 
@@ -869,13 +1061,16 @@ app.get('/api/servers/:name/players', requireAuth, async (req: Request, res: Res
   }
 });
 
-app.post('/api/servers/:name/kick', requireAuth, async (req: Request, res: Response) => {
+app.post('/api/servers/:name/kick', requireAuth, requireAction('kick'), async (req: Request, res: Response) => {
   const srv = getServerByName(req.params.name);
   if (!srv) { res.status(404).json({ error: 'Server not found' }); return; }
 
   const { player, reason } = req.body as { player?: string; reason?: string };
   if (!player || !PLAYER_NAME_REGEX.test(player)) {
     res.status(400).json({ error: 'Invalid player name' }); return;
+  }
+  if (reason && !REASON_REGEX.test(reason)) {
+    res.status(400).json({ error: 'Invalid reason (alphanumeric + basic punctuation, max 150 chars)' }); return;
   }
 
   try {
@@ -891,13 +1086,16 @@ app.post('/api/servers/:name/kick', requireAuth, async (req: Request, res: Respo
   }
 });
 
-app.post('/api/servers/:name/ban', requireAuth, async (req: Request, res: Response) => {
+app.post('/api/servers/:name/ban', requireAuth, requireAction('ban'), async (req: Request, res: Response) => {
   const srv = getServerByName(req.params.name);
   if (!srv) { res.status(404).json({ error: 'Server not found' }); return; }
 
   const { player, reason } = req.body as { player?: string; reason?: string };
   if (!player || !PLAYER_NAME_REGEX.test(player)) {
     res.status(400).json({ error: 'Invalid player name' }); return;
+  }
+  if (reason && !REASON_REGEX.test(reason)) {
+    res.status(400).json({ error: 'Invalid reason (alphanumeric + basic punctuation, max 150 chars)' }); return;
   }
 
   try {
@@ -921,13 +1119,17 @@ app.post('/api/servers/:name/:action', requireAuth, async (req: Request, res: Re
     return;
   }
 
+  const username = req.session?.user?.username || 'unknown';
+  if (!canPerformAction(username, action, name)) {
+    res.status(403).json({ error: 'Permission denied' });
+    return;
+  }
+
   const srv = getServerByName(name);
   if (!srv) {
     res.status(404).json({ error: `Server not found: ${name}` });
     return;
   }
-
-  const username = req.session?.user?.username || 'unknown';
   console.log(`[ACTION] ${username} ${action} ${srv.name}`);
 
   try {
@@ -951,6 +1153,97 @@ app.post('/api/servers/:name/:action', requireAuth, async (req: Request, res: Re
 });
 
 // ---------------------------------------------------------------------------
+// Admin API — user permission management
+// ---------------------------------------------------------------------------
+
+app.get('/api/admin/users', requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+  // Sync FileBrowser users into config — auto-add any missing ones
+  const fbUsers = await getFileBrowserUsers();
+  if (fbUsers.length > 0) {
+    if (!config.users) config.users = {};
+    let changed = false;
+    for (const name of fbUsers) {
+      if (!config.users[name]) {
+        config.users[name] = { '*': [] };
+        console.log(`[PERMS] Auto-synced FileBrowser user: ${name}`);
+        changed = true;
+      }
+    }
+    if (changed) saveConfig();
+  }
+
+  const serverNames = serverList.map(s => s.name);
+  const users: Record<string, UserPermissions> = {};
+  for (const [name, perms] of Object.entries(config.users || {})) {
+    users[name] = perms;
+  }
+  res.json({ users, serverNames, allActions: ALL_ACTIONS });
+});
+
+app.put('/api/admin/users/:username', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  const { username } = req.params;
+  if (username === 'admin') {
+    res.status(400).json({ error: 'Cannot modify admin permissions' });
+    return;
+  }
+  const permissions = req.body as Record<string, string[]>;
+  if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) {
+    res.status(400).json({ error: 'Body must be an object { serverName: [actions] }' });
+    return;
+  }
+  // Validate
+  const validServerNames = serverList.map(s => s.name);
+  const validated: UserPermissions = {};
+  for (const [srv, acts] of Object.entries(permissions)) {
+    if (srv !== '*' && !validServerNames.includes(srv)) continue;
+    if (!Array.isArray(acts)) continue;
+    validated[srv] = acts.filter(a => ALL_ACTIONS.includes(a as ActionPermission)) as ActionPermission[];
+  }
+
+  if (!config.users) config.users = {};
+  config.users[username] = validated;
+  saveConfig();
+  console.log(`[ADMIN] Updated permissions for ${username}:`, JSON.stringify(validated));
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/users', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  const { username } = req.body as { username?: string };
+  if (!username || typeof username !== 'string' || username.length > 100) {
+    res.status(400).json({ error: 'Invalid username' });
+    return;
+  }
+  const name = username.trim();
+  if (!name || name === 'admin') {
+    res.status(400).json({ error: 'Invalid username' });
+    return;
+  }
+  if (!config.users) config.users = {};
+  if (config.users[name]) {
+    res.status(409).json({ error: 'User already exists' });
+    return;
+  }
+  config.users[name] = { '*': [] };
+  saveConfig();
+  console.log(`[ADMIN] Manually added user: ${name} (read-only)`);
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/users/:username', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  const { username } = req.params;
+  if (username === 'admin') {
+    res.status(400).json({ error: 'Cannot delete admin' });
+    return;
+  }
+  if (config.users) {
+    delete config.users[username];
+    saveConfig();
+    console.log(`[ADMIN] Deleted user permissions for ${username}`);
+  }
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
 // WebSocket — push server status every 5s
 // ---------------------------------------------------------------------------
 
@@ -958,6 +1251,7 @@ const wss = new WebSocketServer({ noServer: true });
 
 // Per-client console state
 interface ClientState {
+  username: string;
   logProcess: ChildProcess | null;
   subscribedServer: string | null;
 }
@@ -975,6 +1269,14 @@ function cleanupClient(ws: WebSocket): void {
 function handleConsoleMessage(ws: WebSocket, msg: any): void {
   if (msg.type === 'console:subscribe') {
     const serverName = msg.server;
+    const state = clientStates.get(ws);
+    if (!state) return;
+
+    if (!canPerformAction(state.username, 'console', serverName)) {
+      ws.send(JSON.stringify({ type: 'console:error', server: serverName, error: 'Permission denied' }));
+      return;
+    }
+
     const srv = getServerByName(serverName);
     if (!srv) {
       ws.send(JSON.stringify({ type: 'console:error', server: serverName, error: 'Server not found' }));
@@ -982,7 +1284,6 @@ function handleConsoleMessage(ws: WebSocket, msg: any): void {
     }
 
     // Cleanup previous subscription
-    const state = clientStates.get(ws) || { logProcess: null, subscribedServer: null };
     if (state.logProcess) {
       state.logProcess.kill();
       state.logProcess = null;
@@ -1047,8 +1348,20 @@ function handleConsoleMessage(ws: WebSocket, msg: any): void {
     const serverName = msg.server;
     const command = msg.command;
     if (!serverName || !command || typeof command !== 'string') return;
+    const cmdState = clientStates.get(ws);
+    if (!cmdState || !canPerformAction(cmdState.username, 'console', serverName)) {
+      ws.send(JSON.stringify({ type: 'console:error', server: serverName, error: 'Permission denied' }));
+      return;
+    }
     if (command.length > 1000) {
       ws.send(JSON.stringify({ type: 'console:error', server: serverName, error: 'Command too long' }));
+      return;
+    }
+    // Block dangerous commands for non-admin users
+    const baseCmd = command.trim().split(/\s+/)[0].toLowerCase();
+    const { isAdmin: isAdminUser } = getUserPermissions(cmdState.username);
+    if (!isAdminUser && ADMIN_ONLY_COMMANDS.has(baseCmd)) {
+      ws.send(JSON.stringify({ type: 'console:error', server: serverName, error: `Command "${baseCmd}" is restricted to admin only` }));
       return;
     }
     const srv = getServerByName(serverName);
@@ -1087,8 +1400,9 @@ httpServer.on('upgrade', (req: http.IncomingMessage, socket, head) => {
   });
 });
 
-wss.on('connection', (ws: WebSocket) => {
-  clientStates.set(ws, { logProcess: null, subscribedServer: null });
+wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
+  const username = (req as any).session?.user?.username || 'unknown';
+  clientStates.set(ws, { username, logProcess: null, subscribedServer: null });
 
   ws.on('message', (data) => {
     try {
@@ -1111,11 +1425,24 @@ async function broadcastStatus(): Promise<void> {
   broadcastRunning = true;
   try {
     const enriched = await getEnrichedServers();
-    const data = JSON.stringify({ type: 'status', servers: enriched });
+    // Cache per-user filtered JSON to avoid re-serializing for same permission set
+    const jsonCache = new Map<string, string>();
     for (const client of wss.clients) {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(data);
+      if (client.readyState !== WebSocket.OPEN) continue;
+      const state = clientStates.get(client as WebSocket);
+      const uname = state?.username || 'unknown';
+      let json = jsonCache.get(uname);
+      if (!json) {
+        const filtered = enriched.filter(s => canAccessServer(uname, s.name));
+        // Strip sensitive fields (rcon passwords) before sending to client
+        const safe = filtered.map(({ rcon, ...rest }) => ({
+          ...rest,
+          rcon: rcon ? { enabled: rcon.enabled, port: rcon.port } : null,
+        }));
+        json = JSON.stringify({ type: 'status', servers: safe });
+        jsonCache.set(uname, json);
       }
+      client.send(json);
     }
   } catch (err) {
     console.error('Broadcast error:', (err as Error).message);

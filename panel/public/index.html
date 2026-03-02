@@ -740,12 +740,227 @@ h1, h2, .server-name {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.15));
 }
 
+/* ---------- Admin Modal ---------- */
+
+.admin-modal {
+  max-width: 820px;
+  height: auto;
+  max-height: 85vh;
+}
+
+.admin-content {
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-user-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.admin-user-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.admin-user-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.admin-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.admin-perm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.admin-perm-table th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 6px 4px;
+  text-align: center;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.admin-perm-table th:first-child {
+  text-align: left;
+  padding-left: 8px;
+}
+
+.admin-perm-table td {
+  padding: 5px 4px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.admin-perm-table td:first-child {
+  text-align: left;
+  padding-left: 8px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.admin-perm-table tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+
+.admin-perm-table tr.row-wildcard td {
+  border-bottom: 1px solid var(--glass-border);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.admin-perm-table tr.row-wildcard td:first-child {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.admin-perm-table input[type="checkbox"] {
+  accent-color: var(--primary);
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
+.btn-save-perms {
+  padding: 7px 16px;
+  background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.08));
+  color: var(--success);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 6px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save-perms:hover {
+  background: linear-gradient(135deg, rgba(34,197,94,0.25), rgba(34,197,94,0.12));
+}
+
+.btn-delete-user {
+  padding: 7px 12px;
+  background: rgba(239,68,68,0.1);
+  color: var(--destructive);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 6px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete-user:hover {
+  background: rgba(239,68,68,0.2);
+}
+
+.admin-user-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-saved-msg {
+  font-size: 12px;
+  color: var(--success);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.admin-saved-msg.visible {
+  opacity: 1;
+}
+
+.admin-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.admin-add-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.admin-add-input {
+  flex: 1;
+  padding: 9px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.admin-add-input:focus {
+  border-color: rgba(59,130,246,0.5);
+}
+
+.admin-add-input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-add-user {
+  padding: 9px 16px;
+  background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.1));
+  border: 1px solid rgba(59,130,246,0.3);
+  border-radius: 6px;
+  color: var(--primary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-add-user:hover {
+  background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.15));
+}
+
+.btn-add-user:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   .server-grid { grid-template-columns: 1fr; padding: 0 12px 12px; }
   .topbar { padding: 12px 16px; }
   .stats-bar { padding: 12px 16px; }
   .topbar-right { gap: 8px; }
   .console-modal { height: 90vh; max-width: 100%; }
+  .admin-modal { max-width: 100%; max-height: 90vh; }
   .player-actions { flex-direction: column; }
 }
 </style>
@@ -777,6 +992,10 @@ h1, h2, .server-name {
   <div class="topbar">
     <h1>MatCraft Panel</h1>
     <div class="topbar-right">
+      <button class="btn-nav" id="admin-btn" style="display:none" onclick="panel.openAdmin()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Permissions
+      </button>
       <a class="btn-nav" href="https://sftp.matcraft-mc.com" target="_blank">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
         SFTP
@@ -807,6 +1026,26 @@ h1, h2, .server-name {
   </div>
 </div>
 
+<!-- Admin Permissions Modal -->
+<div id="admin-overlay" class="console-overlay" style="display:none">
+  <div class="console-modal admin-modal">
+    <div class="console-header">
+      <div class="console-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Gestion des permissions
+      </div>
+      <button class="console-close" id="admin-close-btn">&times;</button>
+    </div>
+    <div class="admin-add-bar">
+      <input type="text" class="admin-add-input" id="admin-add-input" placeholder="Nom d'utilisateur FileBrowser..." autocomplete="off">
+      <button class="btn-add-user" id="admin-add-btn">Ajouter</button>
+    </div>
+    <div class="admin-content" id="admin-content">
+      <div style="padding:20px;color:var(--text-muted)">Chargement...</div>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   const loginView = document.getElementById('login-view');
@@ -822,6 +1061,7 @@ h1, h2, .server-name {
   let ws = null;
   let servers = [];
   let pendingActions = new Set();
+  let currentUser = { username: '', isAdmin: false, permissions: {} };
 
   // Console state
   const consoleOverlay = document.getElementById('console-overlay');
@@ -837,9 +1077,12 @@ h1, h2, .server-name {
   const MAX_CONSOLE_LINES = 1000;
 
   function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   // ------ Console ------
@@ -966,6 +1209,11 @@ h1, h2, .server-name {
       const res = await fetch('/api/me');
       if (res.ok) {
         const data = await res.json();
+        currentUser = {
+          username: data.username,
+          isAdmin: data.isAdmin,
+          permissions: data.permissions || {},
+        };
         showDashboard(data.username);
         return;
       }
@@ -979,10 +1227,22 @@ h1, h2, .server-name {
     disconnectWS();
   }
 
+  function hasAction(action, serverName) {
+    if (currentUser.isAdmin) return true;
+    const perms = currentUser.permissions;
+    // Specific server overrides wildcard
+    const serverActions = perms[serverName] ?? perms['*'];
+    if (!serverActions) return false;
+    return serverActions.includes(action);
+  }
+
   function showDashboard(username) {
     loginView.style.display = 'none';
     dashboardView.style.display = 'block';
     userDisplay.textContent = username;
+    // Show/hide admin button
+    const adminBtn = document.getElementById('admin-btn');
+    if (adminBtn) adminBtn.style.display = currentUser.isAdmin ? 'flex' : 'none';
     fetchServers();
     connectWS();
   }
@@ -1004,6 +1264,14 @@ h1, h2, .server-name {
       });
       const data = await res.json();
       if (res.ok) {
+        // Fetch full permissions after login
+        try {
+          const meRes = await fetch('/api/me');
+          if (meRes.ok) {
+            const me = await meRes.json();
+            currentUser = { username: me.username, isAdmin: me.isAdmin, permissions: me.permissions || {} };
+          }
+        } catch {}
         showDashboard(data.username);
       } else {
         loginError.textContent = data.error === 'Invalid credentials' ? 'Identifiants invalides' : (data.error || 'Echec de connexion');
@@ -1149,22 +1417,22 @@ h1, h2, .server-name {
           <div class="server-actions">
             <button class="btn-action btn-start ${isStarting ? 'loading' : ''}"
                     onclick="panel.action('${safeName}','start')"
-                    ${isActive || busy ? 'disabled' : ''}>
+                    ${isActive || busy || !hasAction('start', s.name) ? 'disabled' : ''}>
               <div class="spinner"></div><span>Démarrer</span>
             </button>
             <button class="btn-action btn-stop ${isStopping ? 'loading' : ''}"
                     onclick="panel.action('${safeName}','stop')"
-                    ${!isActive || busy ? 'disabled' : ''}>
+                    ${!isActive || busy || !hasAction('stop', s.name) ? 'disabled' : ''}>
               <div class="spinner"></div><span>Arrêter</span>
             </button>
             <button class="btn-action btn-restart ${isRestarting ? 'loading' : ''}"
                     onclick="panel.action('${safeName}','restart')"
-                    ${!isActive || busy ? 'disabled' : ''}>
+                    ${!isActive || busy || !hasAction('restart', s.name) ? 'disabled' : ''}>
               <div class="spinner"></div><span>Redémarrer</span>
             </button>
             <button class="btn-action btn-console"
                     onclick="panel.openConsole('${safeName}')"
-                    ${!isActive ? 'disabled' : ''}>
+                    ${!isActive || !hasAction('console', s.name) ? 'disabled' : ''}>
               <span>Console</span>
             </button>
           </div>
@@ -1178,8 +1446,8 @@ h1, h2, .server-name {
                   <img class="player-avatar" src="https://mc-heads.net/avatar/${encodeURIComponent(p)}/20" alt="${safePName}" loading="lazy">
                   <span class="player-name">${safePName}</span>
                   <div class="player-actions">
-                    <button class="btn-player btn-kick" onclick="panel.kick('${safeName}','${safePName}')">Kick</button>
-                    <button class="btn-player btn-ban" onclick="panel.ban('${safeName}','${safePName}')">Ban</button>
+                    ${hasAction('kick', s.name) ? `<button class="btn-player btn-kick" onclick="panel.kick('${safeName}','${safePName}')">Kick</button>` : ''}
+                    ${hasAction('ban', s.name) ? `<button class="btn-player btn-ban" onclick="panel.ban('${safeName}','${safePName}')">Ban</button>` : ''}
                   </div>
                 </div>`;
               }).join('')}
@@ -1234,11 +1502,240 @@ h1, h2, .server-name {
     if (ws) { ws.close(); ws = null; }
   }
 
+  // ------ Admin Permissions Modal ------
+
+  const adminOverlay = document.getElementById('admin-overlay');
+  const adminContent = document.getElementById('admin-content');
+  const adminCloseBtn = document.getElementById('admin-close-btn');
+  const adminAddInput = document.getElementById('admin-add-input');
+  const adminAddBtn = document.getElementById('admin-add-btn');
+  let adminData = null;
+
+  const ACTION_LABELS = {
+    start: 'Démarrer',
+    stop: 'Arrêter',
+    restart: 'Redémarrer',
+    console: 'Console',
+    kick: 'Kick',
+    ban: 'Ban',
+  };
+
+  async function openAdmin() {
+    adminOverlay.style.display = 'flex';
+    adminContent.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Chargement...</div>';
+    try {
+      const res = await fetch('/api/admin/users');
+      if (!res.ok) { adminContent.innerHTML = '<div class="admin-empty">Erreur de chargement</div>'; return; }
+      adminData = await res.json();
+      renderAdmin();
+    } catch {
+      adminContent.innerHTML = '<div class="admin-empty">Erreur de connexion</div>';
+    }
+  }
+
+  function closeAdmin() {
+    adminOverlay.style.display = 'none';
+  }
+
+  adminCloseBtn.addEventListener('click', closeAdmin);
+  adminOverlay.addEventListener('click', (e) => {
+    if (e.target === adminOverlay) closeAdmin();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && adminOverlay.style.display === 'flex' && !consoleServer) closeAdmin();
+  });
+
+  async function addUser() {
+    const name = adminAddInput.value.trim();
+    if (!name) return;
+    adminAddBtn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: name }),
+      });
+      if (res.ok) {
+        adminAddInput.value = '';
+        // Refresh admin data
+        if (adminData) {
+          adminData.users[name] = { '*': [] };
+          renderAdmin();
+        }
+      } else {
+        const err = await res.json();
+        alert(err.error === 'User already exists' ? 'Cet utilisateur existe déjà.' : (err.error || 'Erreur'));
+      }
+    } catch {
+      alert('Erreur de connexion');
+    }
+    adminAddBtn.disabled = false;
+  }
+
+  adminAddBtn.addEventListener('click', addUser);
+  adminAddInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addUser();
+  });
+
+  function renderAdmin() {
+    if (!adminData) return;
+    const { users, serverNames, allActions } = adminData;
+    const userNames = Object.keys(users);
+
+    if (userNames.length === 0) {
+      adminContent.innerHTML = '<div class="admin-empty">Aucun utilisateur enregistré.<br>Les utilisateurs apparaîtront ici après leur première connexion.</div>';
+      return;
+    }
+
+    adminContent.innerHTML = userNames.map(name => {
+      const perms = users[name]; // Record<string, string[]>
+      const hasWildcard = '*' in perms;
+      const wildcardActions = perms['*'] || [];
+      const safeName = escapeHtml(name);
+
+      // Build table rows: first row = "Tous" (bulk toggle), then each server
+      const allVisible = hasWildcard ? true : serverNames.every(sn => sn in perms);
+      const wildcardRow = `<tr class="row-wildcard">
+        <td>Tous</td>
+        <td><input type="checkbox" class="cb-all-vis" ${allVisible ? 'checked' : ''} onchange="panel.toggleAllVis(this)"></td>
+        ${allActions.map(a =>
+          `<td><input type="checkbox" data-act-all="${a}" onchange="panel.toggleAllAct(this, '${a}')"></td>`
+        ).join('')}
+      </tr>`;
+
+      const serverRows = serverNames.map(sn => {
+        const safeSn = escapeHtml(sn);
+        const hasSpecific = sn in perms;
+        const srvActions = perms[sn] || [];
+        const isVisible = hasSpecific || hasWildcard;
+        return `<tr>
+          <td>${safeSn}</td>
+          <td><input type="checkbox" class="cb-vis" data-srv="${safeSn}" ${isVisible ? 'checked' : ''} onchange="panel.onVisToggle(this)"></td>
+          ${allActions.map(a => {
+            const checked = hasSpecific ? srvActions.includes(a) : (hasWildcard ? wildcardActions.includes(a) : false);
+            return `<td><input type="checkbox" data-srv="${safeSn}" data-act="${a}" ${checked ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}></td>`;
+          }).join('')}
+        </tr>`;
+      }).join('');
+
+      return `
+        <div class="admin-user-card" data-user="${safeName}">
+          <div class="admin-user-header">
+            <span class="admin-user-name">${safeName}</span>
+            <div class="admin-user-actions">
+              <span class="admin-saved-msg" id="saved-${safeName}">Sauvegardé !</span>
+              <button class="btn-save-perms" onclick="panel.savePerms('${safeName}')">Sauvegarder</button>
+              <button class="btn-delete-user" onclick="panel.deleteUser('${safeName}')">Supprimer</button>
+            </div>
+          </div>
+          <table class="admin-perm-table">
+            <thead><tr>
+              <th>Serveur</th>
+              <th>Visible</th>
+              ${allActions.map(a => `<th>${ACTION_LABELS[a] || a}</th>`).join('')}
+            </tr></thead>
+            <tbody>
+              ${wildcardRow}
+              ${serverRows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleAllVis(el) {
+    const card = el.closest('.admin-user-card');
+    const isOn = el.checked;
+    card.querySelectorAll('.cb-vis').forEach(cb => {
+      cb.checked = isOn;
+      // Enable/disable action checkboxes for that row
+      const row = cb.closest('tr');
+      row.querySelectorAll('input[data-act]').forEach(act => {
+        if (!isOn) { act.checked = false; act.disabled = true; }
+        else act.disabled = false;
+      });
+    });
+  }
+
+  function toggleAllAct(el, action) {
+    const card = el.closest('.admin-user-card');
+    const isOn = el.checked;
+    card.querySelectorAll(`input[data-act="${action}"]`).forEach(cb => {
+      if (!cb.disabled) cb.checked = isOn;
+    });
+  }
+
+  function onVisToggle(el) {
+    const row = el.closest('tr');
+    const isOn = el.checked;
+    row.querySelectorAll('input[data-act]').forEach(cb => {
+      if (!isOn) { cb.checked = false; cb.disabled = true; }
+      else cb.disabled = false;
+    });
+    // Update "Tous" visible checkbox state
+    const card = el.closest('.admin-user-card');
+    const allVis = card.querySelector('.cb-all-vis');
+    const allChecked = [...card.querySelectorAll('.cb-vis')].every(cb => cb.checked);
+    allVis.checked = allChecked;
+  }
+
+  async function savePerms(username) {
+    const card = document.querySelector(`.admin-user-card[data-user="${username}"]`);
+    if (!card) return;
+
+    const result = {};
+    // Collect each visible server with its actions
+    card.querySelectorAll('.cb-vis').forEach(visCb => {
+      if (!visCb.checked) return;
+      const srv = visCb.dataset.srv;
+      const row = visCb.closest('tr');
+      const acts = [];
+      row.querySelectorAll('input[data-act]').forEach(cb => {
+        if (cb.checked) acts.push(cb.dataset.act);
+      });
+      result[srv] = acts;
+    });
+
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result),
+      });
+      if (res.ok) {
+        if (adminData) adminData.users[username] = result;
+        const msg = document.getElementById('saved-' + username);
+        if (msg) {
+          msg.classList.add('visible');
+          setTimeout(() => msg.classList.remove('visible'), 2000);
+        }
+      }
+    } catch {}
+  }
+
+  async function deleteUser(username) {
+    if (!confirm(`Supprimer les permissions de ${username} ? L'utilisateur redeviendra read-only.`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}`, { method: 'DELETE' });
+      if (res.ok && adminData) {
+        delete adminData.users[username];
+        renderAdmin();
+      }
+    } catch {}
+  }
+
   window.panel = {
     action: serverAction,
     openConsole,
     kick: kickPlayer,
     ban: banPlayer,
+    openAdmin,
+    savePerms,
+    deleteUser,
+    toggleAllVis,
+    toggleAllAct,
+    onVisToggle,
   };
   checkAuth();
 })();
