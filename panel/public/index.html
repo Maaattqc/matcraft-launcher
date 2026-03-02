@@ -1296,10 +1296,15 @@ h1, h2, .server-name {
   async function fetchServers() {
     try {
       const res = await fetch('/api/servers');
+      console.log('[Panel] fetchServers status:', res.status);
       if (res.status === 401) { showLogin(); return; }
+      if (!res.ok) { console.error('[Panel] fetchServers error:', res.status); return; }
       servers = await res.json();
+      console.log('[Panel] fetchServers got', servers.length, 'servers');
       renderServers();
-    } catch {}
+    } catch (err) {
+      console.error('[Panel] fetchServers exception:', err);
+    }
   }
 
   async function serverAction(name, action) {

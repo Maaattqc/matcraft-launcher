@@ -102,6 +102,7 @@ export function reducer(state: LaunchState, action: LaunchAction): LaunchState {
     }
 
     case 'PROGRESS': {
+      if (action.element === 'Log_configs') return state
       const percent = action.size > 0 ? Math.min((action.progress / action.size) * 100, 100) : 0
       return {
         ...state,

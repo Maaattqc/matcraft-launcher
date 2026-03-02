@@ -599,7 +599,7 @@ function formatMemory(mb: number): string {
   return mb >= 1024 && mb % 1024 === 0 ? `${mb / 1024}G` : `${mb}M`;
 }
 
-async function syncServiceFile(srv: MCServer): Promise<void> {
+async function writeServiceFile(srv: MCServer): Promise<void> {
   const maxMB = parseMemoryMB(srv.maxMemory);
   const memoryMax = formatMemory(maxMB + 1024); // +1G headroom for JVM overhead
 
@@ -629,14 +629,9 @@ WantedBy=multi-user.target
   const tmpPath = `/tmp/${srv.service}.service`;
   const destPath = `/etc/systemd/system/${srv.service}.service`;
 
-  try {
-    fs.writeFileSync(tmpPath, content, 'utf8');
-    await execFileAsync('sudo', ['cp', tmpPath, destPath], { timeout: 5000 });
-    await execFileAsync('sudo', ['systemctl', 'daemon-reload'], { timeout: 10000 });
-    console.log(`[SYNC] Regenerated ${srv.service}.service`);
-  } catch (err) {
-    console.error(`[SYNC] Failed to sync ${srv.service}.service:`, (err as Error).message);
-  }
+  fs.writeFileSync(tmpPath, content, 'utf8');
+  await execFileAsync('sudo', ['cp', tmpPath, destPath], { timeout: 5000 });
+  console.log(`[SYNC] Wrote ${srv.service}.service`);
 }
 
 // ---------------------------------------------------------------------------
@@ -897,12 +892,6 @@ let serverList: MCServer[] = [];
 function refreshServerList(): void {
   serverList = discoverServers();
   serverList.forEach((s, i) => ensureRconEnabled(s, i));
-  // Sync systemd service files from start.sh at startup
-  for (const s of serverList) {
-    syncServiceFile(s).catch(err =>
-      console.error(`[SYNC] Startup sync failed for ${s.name}:`, err.message)
-    );
-  }
   // Populate RCON config cache at startup
   rconConfigCache.clear();
   for (const s of serverList) {
@@ -965,6 +954,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
     next();
     return;
   }
+  console.log(`[AUTH] 401 on ${req.method} ${req.path} (no session user)`);
   res.status(401).json({ error: 'Not authenticated' });
 }
 
@@ -1206,7 +1196,8 @@ app.post('/api/servers/:name/:action', requireAuth, async (req: Request, res: Re
         const freshSrv = parseStartScript(srv.name, srv.dir, script);
         if (freshSrv) {
           Object.assign(srv, freshSrv);
-          await syncServiceFile(freshSrv);
+          await writeServiceFile(freshSrv);
+          await execFileAsync('sudo', ['systemctl', 'daemon-reload'], { timeout: 10000 });
         }
       }
     }
@@ -1466,7 +1457,14 @@ function handleConsoleMessage(ws: WebSocket, msg: any): void {
 }
 
 httpServer.on('upgrade', (req: http.IncomingMessage, socket, head) => {
-  sessionMiddleware(req as any, {} as any, () => {
+  // Minimal response mock for express-session (needs getHeader/setHeader/end)
+  const dummyRes = {
+    getHeader: () => undefined,
+    setHeader: () => dummyRes,
+    writeHead: () => dummyRes,
+    end: () => {},
+  } as any;
+  sessionMiddleware(req as any, dummyRes, () => {
     if (!(req as any).session?.user) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
