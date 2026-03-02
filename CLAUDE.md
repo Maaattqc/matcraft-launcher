@@ -100,6 +100,10 @@ sftp/
   - Nginx modifié : `sudo nginx -t && sudo systemctl reload nginx`
   - Service modifié : `sudo systemctl daemon-reload && sudo systemctl restart filebrowser`
 
+## Conventions
+
+- **Messages de commit** : toujours en français.
+
 ## Key dependencies
 
 | Package | Purpose |
