@@ -125,9 +125,20 @@ class RconClient {
     });
   }
 
-  private async authenticate(): Promise<void> {
-    const resp = await this.sendRaw(3, this.password); // type 3 = AUTH
-    void resp;
+  private authenticate(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) { reject(new Error('No socket')); return; }
+      const id = ++this.requestId;
+      const timeout = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error('RCON auth timeout'));
+      }, 5000);
+      this.pending.set(id, {
+        resolve: () => { clearTimeout(timeout); resolve(); },
+        reject: (e) => { clearTimeout(timeout); reject(e); },
+      });
+      this.socket.write(this.buildPacket(id, 3, this.password));
+    });
   }
 
   async send(command: string): Promise<string> {
