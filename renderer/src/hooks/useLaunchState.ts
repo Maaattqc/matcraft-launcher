@@ -66,14 +66,14 @@ export function reducer(state: LaunchState, action: LaunchAction): LaunchState {
           ...state,
           phase: 'syncing_mods',
           progress: percent,
-          statusText: `Téléchargement : ${action.modName} (${action.current}/${action.total})`,
+          statusText: `Téléchargement des mods (${action.current}/${action.total})`,
         }
       }
       if (action.phase === 'deleting') {
         return {
           ...state,
           phase: 'syncing_mods',
-          statusText: `Suppression : ${action.modName}`,
+          statusText: 'Suppression des mods obsolètes...',
         }
       }
       if (action.phase === 'checking-configs') {
