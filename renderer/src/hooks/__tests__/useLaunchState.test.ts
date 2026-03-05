@@ -75,15 +75,17 @@ describe('useLaunchState reducer', () => {
     expect(state.phase).toBe('running')
   })
 
-  it('RUNNING → resets to idle (multi-instance)', () => {
+  it('RUNNING → phase=running, progress=100', () => {
     const state = reducer(initialState, { type: 'RUNNING' })
-    expect(state.phase).toBe('idle')
+    expect(state.phase).toBe('running')
+    expect(state.progress).toBe(100)
+    expect(state.statusText).toBe('Jeu en cours...')
   })
 
-  it('MODS_LOADED when loading_mods → resets to idle (multi-instance)', () => {
+  it('MODS_LOADED when loading_mods → transitions to running', () => {
     const prev = { ...initialState, phase: 'loading_mods' as const }
     const state = reducer(prev, { type: 'MODS_LOADED' })
-    expect(state.phase).toBe('idle')
+    expect(state.phase).toBe('running')
   })
 
   it('MODS_LOADED when NOT loading_mods → no change', () => {

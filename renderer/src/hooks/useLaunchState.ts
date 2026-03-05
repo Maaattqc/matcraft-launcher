@@ -158,11 +158,11 @@ export function reducer(state: LaunchState, action: LaunchAction): LaunchState {
     }
 
     case 'RUNNING':
-      return { ...initialState }
+      return { ...state, phase: 'running', statusText: 'Jeu en cours...', progress: 100 }
 
     case 'MODS_LOADED':
       if (state.phase === 'loading_mods') {
-        return { ...initialState }
+        return { ...state, phase: 'running', statusText: 'Jeu en cours...', progress: 100 }
       }
       return state
 

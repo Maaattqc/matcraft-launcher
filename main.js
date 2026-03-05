@@ -300,9 +300,16 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         // Sync FancyMenu configs from server
         await syncConfigs(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
 
+        // Check if another launcher process already has a game running
+        const lockFile = path.join(GAME_DIR, '.matcraft.lock');
+        const isFirstInstance = !fs.existsSync(lockFile);
+
         // Start watching the mods directory for unauthorized changes
+        // Skip if another launcher already has a guard on the same directory
         const modsDir = path.join(GAME_DIR, 'mods');
-        instanceModsGuard = createModsGuard(modsDir, allowedMods);
+        if (isFirstInstance) {
+            instanceModsGuard = createModsGuard(modsDir, allowedMods);
+        }
 
         const launcher = new Launch();
 
@@ -339,6 +346,10 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             if (inst?.dllGuard) { inst.dllGuard.stop(); }
             if (inst?.modsGuard) { inst.modsGuard.stop(); }
             activeInstances.delete(instanceId);
+            // Remove lock file if no more instances in this process
+            if (activeInstances.size === 0) {
+                try { fs.unlinkSync(path.join(GAME_DIR, '.matcraft.lock')); } catch {}
+            }
             mainWindow?.webContents.send('launch:close', instanceId);
             if (activeInstances.size === 0) {
                 if (tray) {
@@ -393,10 +404,11 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         };
 
         // Final integrity check right before launching
-        await instanceModsGuard.verify();
-
-        // Verify Fabric loader libraries integrity
-        await verifyFabricLoader(GAME_DIR);
+        // Skip if another launcher already verified — files may be locked by Java on Windows
+        if (isFirstInstance) {
+            await instanceModsGuard.verify();
+            await verifyFabricLoader(GAME_DIR);
+        }
 
         // Snapshot java PIDs before launch (cross-platform)
         let pidsBefore = null;
@@ -405,6 +417,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         }
 
         await launcher.Launch(launchOptions);
+
+        // Create lock file so other launcher processes know a game is running
+        try { fs.writeFileSync(lockFile, instanceId); } catch {}
 
         // Track this instance
         activeInstances.set(instanceId, { launcher, modsGuard: instanceModsGuard, dllGuard: null });
