@@ -290,22 +290,18 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             fs.mkdirSync(GAME_DIR, { recursive: true });
         }
 
-        // Create per-instance game directory
-        const instanceGameDir = path.join(GAME_DIR, 'instances', instanceId);
-        fs.mkdirSync(instanceGameDir, { recursive: true });
-
-        // Sync mods with server manifest (anti-cheat) — into instance dir
+        // Sync mods with server manifest (anti-cheat)
         const MODS_BASE_URL = `${AZAUTH_URL}/launcher`;
         const sendSyncProgress = (phase, current, total, modName) => {
             mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName, instanceId });
         };
-        const allowedMods = await syncMods(instanceGameDir, MODS_BASE_URL, sendSyncProgress);
+        const allowedMods = await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
 
-        // Sync FancyMenu configs from server — into instance dir
-        await syncConfigs(instanceGameDir, MODS_BASE_URL, sendSyncProgress);
+        // Sync FancyMenu configs from server
+        await syncConfigs(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
 
         // Start watching the mods directory for unauthorized changes
-        const modsDir = path.join(instanceGameDir, 'mods');
+        const modsDir = path.join(GAME_DIR, 'mods');
         instanceModsGuard = createModsGuard(modsDir, allowedMods);
 
         const launcher = new Launch();
@@ -363,7 +359,6 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         const launchOptions = {
             authenticator: authenticatorData,
             path: GAME_DIR,
-            instance: instanceId,
             version: '1.21.11',
             memory: {
                 min: config.minRam || '2G',
