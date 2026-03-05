@@ -305,11 +305,12 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         const isFirstInstance = !fs.existsSync(lockFile);
 
         // Start watching the mods directory for unauthorized changes
-        // Skip if another launcher already has a guard on the same directory
+        // All instances get a watcher; only the first does the initial hash verify
+        // (subsequent instances skip it to avoid blocking on Windows file locks)
         const modsDir = path.join(GAME_DIR, 'mods');
-        if (isFirstInstance) {
-            instanceModsGuard = createModsGuard(modsDir, allowedMods);
-        }
+        instanceModsGuard = createModsGuard(modsDir, allowedMods, {
+            skipInitialVerify: !isFirstInstance
+        });
 
         const launcher = new Launch();
 
