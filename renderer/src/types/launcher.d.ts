@@ -47,7 +47,7 @@ export interface LauncherAPI {
   onExtract(cb: (fileName: string) => void): () => void
   onPatch(cb: (patchName: string) => void): () => void
   onData(cb: (line: string) => void): () => void
-  onClose(cb: () => void): () => void
+  onClose(cb: (instanceId?: string) => void): () => void
   onError(cb: (err: string) => void): () => void
   onSyncProgress(cb: (data: SyncProgressData) => void): () => void
 

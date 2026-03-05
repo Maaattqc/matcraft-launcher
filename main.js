@@ -24,13 +24,12 @@ app.setName('MatCraft');
 const AZAUTH_URL = 'https://matfaction.com';
 
 let mainWindow = null;
-let launcher = null;
 let GAME_DIR = '';
 let authenticatorData = null;
-let gameRunning = false;
-let modsGuard = null;
-let dllGuard = null;
 let tray = null;
+
+// Multi-instance support: each running game is tracked by account UUID
+const activeInstances = new Map(); // instanceId (uuid) -> { launcher, modsGuard, dllGuard }
 
 function createWindow() {
     GAME_DIR = path.join(app.getPath('appData'), '.matcraft');
@@ -144,7 +143,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-    if (!gameRunning) app.quit();
+    if (activeInstances.size === 0) app.quit();
 });
 
 // ── Window controls ──
@@ -157,7 +156,7 @@ ipcMain.on('window:maximize', () => {
     }
 });
 ipcMain.on('window:close', () => {
-    if (gameRunning) {
+    if (activeInstances.size > 0) {
         mainWindow?.hide();
         if (!tray) {
             const iconPath = path.join(__dirname, 'src', 'icon.png');
@@ -166,7 +165,16 @@ ipcMain.on('window:close', () => {
             const contextMenu = Menu.buildFromTemplate([
                 { label: 'Ouvrir MatCraft', click: () => { mainWindow?.show(); } },
                 { type: 'separator' },
-                { label: 'Quitter', click: () => { gameRunning = false; mainWindow?.close(); app.quit(); } }
+                { label: 'Quitter', click: () => {
+                    // Stop all instances
+                    for (const [, inst] of activeInstances) {
+                        if (inst.dllGuard) inst.dllGuard.stop();
+                        if (inst.modsGuard) inst.modsGuard.stop();
+                    }
+                    activeInstances.clear();
+                    mainWindow?.close();
+                    app.quit();
+                } }
             ]);
             tray.setContextMenu(contextMenu);
             tray.on('double-click', () => { mainWindow?.show(); });
@@ -263,78 +271,99 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         return { success: false, error: 'Format de RAM invalide.' };
     }
 
+    // Use the account UUID as the instance identifier
+    const instanceId = authenticatorData?.uuid;
+    if (!instanceId) {
+        return { success: false, error: 'Aucun compte connecté.' };
+    }
+
+    // Prevent launching twice on the same account
+    if (activeInstances.has(instanceId)) {
+        return { success: false, error: 'Ce compte a déjà une instance en cours.' };
+    }
+
+    let instanceModsGuard = null;
+
     try {
         // Ensure game directory exists
         if (!fs.existsSync(GAME_DIR)) {
             fs.mkdirSync(GAME_DIR, { recursive: true });
         }
 
-        // Sync mods with server manifest (anti-cheat)
+        // Create per-instance game directory
+        const instanceGameDir = path.join(GAME_DIR, 'instances', instanceId);
+        fs.mkdirSync(instanceGameDir, { recursive: true });
+
+        // Sync mods with server manifest (anti-cheat) — into instance dir
         const MODS_BASE_URL = `${AZAUTH_URL}/launcher`;
         const sendSyncProgress = (phase, current, total, modName) => {
-            mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName });
+            mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName, instanceId });
         };
-        const allowedMods = await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
+        const allowedMods = await syncMods(instanceGameDir, MODS_BASE_URL, sendSyncProgress);
 
-        // Sync FancyMenu configs from server
-        await syncConfigs(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
+        // Sync FancyMenu configs from server — into instance dir
+        await syncConfigs(instanceGameDir, MODS_BASE_URL, sendSyncProgress);
 
         // Start watching the mods directory for unauthorized changes
-        const modsDir = path.join(GAME_DIR, 'mods');
-        modsGuard = createModsGuard(modsDir, allowedMods);
+        const modsDir = path.join(instanceGameDir, 'mods');
+        instanceModsGuard = createModsGuard(modsDir, allowedMods);
 
-        launcher = new Launch();
+        const launcher = new Launch();
 
-        // Forward events to renderer
+        // Forward events to renderer (tagged with instanceId)
         launcher.on('progress', (progress, size, element) => {
-            mainWindow?.webContents.send('launch:progress', progress, size, element);
+            mainWindow?.webContents.send('launch:progress', progress, size, element, instanceId);
         });
 
         launcher.on('speed', (speed) => {
-            mainWindow?.webContents.send('launch:speed', speed);
+            mainWindow?.webContents.send('launch:speed', speed, instanceId);
         });
 
         launcher.on('estimated', (seconds) => {
-            mainWindow?.webContents.send('launch:estimated', seconds);
+            mainWindow?.webContents.send('launch:estimated', seconds, instanceId);
         });
 
         launcher.on('extract', (fileName) => {
-            mainWindow?.webContents.send('launch:extract', fileName);
+            mainWindow?.webContents.send('launch:extract', fileName, instanceId);
         });
 
         launcher.on('patch', (patchName) => {
-            mainWindow?.webContents.send('launch:patch', patchName);
+            mainWindow?.webContents.send('launch:patch', patchName, instanceId);
         });
 
         launcher.on('data', (line) => {
-            mainWindow?.webContents.send('launch:data', String(line));
+            mainWindow?.webContents.send('launch:data', String(line), instanceId);
         });
 
         let gameClosed = false;
 
         launcher.on('close', () => {
             gameClosed = true;
-            gameRunning = false;
-            if (dllGuard) { dllGuard.stop(); dllGuard = null; }
-            if (modsGuard) { modsGuard.stop(); modsGuard = null; }
-            mainWindow?.webContents.send('launch:close');
-            if (tray) {
-                tray.destroy();
-                tray = null;
-            }
-            if (mainWindow && !mainWindow.isVisible()) {
-                mainWindow.show();
+            const inst = activeInstances.get(instanceId);
+            if (inst?.dllGuard) { inst.dllGuard.stop(); }
+            if (inst?.modsGuard) { inst.modsGuard.stop(); }
+            activeInstances.delete(instanceId);
+            mainWindow?.webContents.send('launch:close', instanceId);
+            if (activeInstances.size === 0) {
+                if (tray) {
+                    tray.destroy();
+                    tray = null;
+                }
+                if (mainWindow && !mainWindow.isVisible()) {
+                    mainWindow.show();
+                }
             }
         });
 
         launcher.on('error', (err) => {
             if (gameClosed) return;
-            mainWindow?.webContents.send('launch:error', String(err).slice(0, 500));
+            mainWindow?.webContents.send('launch:error', String(err).slice(0, 500), instanceId);
         });
 
         const launchOptions = {
             authenticator: authenticatorData,
             path: GAME_DIR,
+            instance: instanceId,
             version: '1.21.11',
             memory: {
                 min: config.minRam || '2G',
@@ -369,7 +398,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         };
 
         // Final integrity check right before launching
-        await modsGuard.verify();
+        await instanceModsGuard.verify();
 
         // Verify Fabric loader libraries integrity
         await verifyFabricLoader(GAME_DIR);
@@ -381,7 +410,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         }
 
         await launcher.Launch(launchOptions);
-        gameRunning = true;
+
+        // Track this instance
+        activeInstances.set(instanceId, { launcher, modsGuard: instanceModsGuard, dllGuard: null });
 
         // Start anti-cheat guard after launch
         if (pidsBefore && findNewPid) {
@@ -396,25 +427,31 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
                 } else {
                     message = 'Violation anti-triche détectée. Le jeu a été fermé.';
                 }
-                mainWindow?.webContents.send('launch:error', message);
+                mainWindow?.webContents.send('launch:error', message, instanceId);
             };
 
             findNewPid(pidsBefore).then((pid) => {
-                if (!pid || !gameRunning) return;
+                if (!pid || !activeInstances.has(instanceId)) return;
+                const inst = activeInstances.get(instanceId);
                 if (process.platform === 'win32' && createDllGuard) {
                     // Windows: full guard (DLL + overlay + blacklist via .exe worker)
-                    dllGuard = createDllGuard(pid, { onViolation });
+                    inst.dllGuard = createDllGuard(pid, { onViolation });
                 } else if (createBlacklistGuard) {
                     // macOS/Linux: blacklist-only guard (native JS)
-                    dllGuard = createBlacklistGuard(pid, { onViolation });
+                    inst.dllGuard = createBlacklistGuard(pid, { onViolation });
                 }
             }).catch(() => {});
         }
 
         return { success: true };
     } catch (err) {
-        if (dllGuard) { dllGuard.stop(); dllGuard = null; }
-        if (modsGuard) { modsGuard.stop(); modsGuard = null; }
+        if (instanceModsGuard) { instanceModsGuard.stop(); }
+        // Clean up from map if it was added
+        const inst = activeInstances.get(instanceId);
+        if (inst) {
+            if (inst.dllGuard) inst.dllGuard.stop();
+            activeInstances.delete(instanceId);
+        }
         return { success: false, error: err.message || 'Erreur lors du lancement.' };
     }
 });

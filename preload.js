@@ -42,7 +42,7 @@ contextBridge.exposeInMainWorld('launcher', {
         return () => ipcRenderer.removeListener('launch:data', handler);
     },
     onClose: (cb) => {
-        const handler = () => cb();
+        const handler = (_e, instanceId) => cb(instanceId);
         ipcRenderer.on('launch:close', handler);
         return () => ipcRenderer.removeListener('launch:close', handler);
     },
