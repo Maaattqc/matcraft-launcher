@@ -70,6 +70,14 @@ const SERVICES: ServiceDef[] = [
     systemd: 'cloudflared',
     description: 'Cloudflare Tunnel',
   },
+  {
+    id: 'beauce-audit',
+    name: 'Beauce Audit',
+    category: 'web',
+    systemd: 'beauce-audit',
+    url: 'https://audit.mathieu-fournier.net',
+    description: 'Beauce Web Audit - Hub de prospection',
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -85,6 +93,18 @@ function loadConfig(): { sessionSecret: string; passwordHash?: string } {
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2) + '\n');
     return cfg;
   }
+}
+
+
+// Cross-domain auth token for sub-services (audit, etc.)
+const AUTH_COOKIE = 'mf_auth';
+const AUTH_DOMAIN = '.mathieu-fournier.net';
+const AUTH_MAX_AGE = 24 * 60 * 60 * 1000;
+
+function signAuthToken(secret: string): string {
+  const expiry = (Date.now() + AUTH_MAX_AGE).toString(16);
+  const hmac = crypto.createHmac('sha256', secret).update(expiry).digest('hex');
+  return expiry + '.' + hmac;
 }
 
 async function getServiceStatus(name: string): Promise<'active' | 'activating' | 'inactive' | 'failed' | 'unknown'> {
@@ -184,12 +204,14 @@ app.post('/api/login', loginLimiter, async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
   req.session.authenticated = true;
+  res.cookie(AUTH_COOKIE, signAuthToken(config.sessionSecret), { domain: AUTH_DOMAIN, httpOnly: true, secure: true, sameSite: "lax", maxAge: AUTH_MAX_AGE });
   res.json({ ok: true });
 });
 
 app.post('/api/logout', (req: Request, res: Response) => {
   req.session.destroy((err) => {
     if (err) console.error('Session destroy error:', err);
+    res.clearCookie(AUTH_COOKIE, { domain: AUTH_DOMAIN });
     res.json({ ok: true });
   });
 });
