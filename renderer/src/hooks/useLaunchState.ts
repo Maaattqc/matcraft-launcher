@@ -96,7 +96,7 @@ export function reducer(state: LaunchState, action: LaunchAction): LaunchState {
         }
       }
       if (action.phase === 'configs-done') {
-        return state
+        return { ...state, phase: 'launching', statusText: 'Lancement en cours...', progress: 0 }
       }
       return state
     }
