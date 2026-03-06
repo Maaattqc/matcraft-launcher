@@ -349,10 +349,14 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             skipInitialVerify: !isFirstInstance
         });
 
-        // For non-first instances, find existing Java executable to skip runtime
-        // verification entirely — avoids EBUSY on locked DLLs (java.dll etc.)
+        // For non-first instances, skip all file hashing to avoid EBUSY on locked
+        // files. checkBundle normally hashes every file to see if it needs
+        // downloading — but if the 1st instance is still loading or playing, those
+        // files may be locked. We just check existence instead.
         let javaPath = null;
+        let origCheckBundle = null;
         if (!isFirstInstance) {
+            // Find existing Java executable — skips runtime download/verification
             const runtimeDir = path.join(GAME_DIR, 'runtime');
             try {
                 for (const jreVer of fs.readdirSync(runtimeDir)) {
@@ -369,6 +373,30 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
                 }
             } catch {}
             diagLog(javaPath ? `Using existing Java: ${javaPath}` : 'WARNING: could not find existing Java');
+
+            // Monkey-patch checkBundle to skip hashing — only check file existence
+            try {
+                const MBundle = require('minecraft-java-core/build/Minecraft/Minecraft-Bundle.js').default;
+                origCheckBundle = MBundle.prototype.checkBundle;
+                MBundle.prototype.checkBundle = async function(bundle) {
+                    const toDownload = [];
+                    for (const file of bundle) {
+                        if (!file.path) continue;
+                        file.path = path.resolve(this.options.path, file.path).replace(/\\/g, '/');
+                        file.folder = file.path.split('/').slice(0, -1).join('/');
+                        if (file.type === 'CFILE') {
+                            if (!fs.existsSync(file.folder)) fs.mkdirSync(file.folder, { recursive: true });
+                            fs.writeFileSync(file.path, file.content ?? '', { encoding: 'utf8', mode: 0o755 });
+                            continue;
+                        }
+                        if (!fs.existsSync(file.path)) {
+                            toDownload.push(file);
+                        }
+                    }
+                    return toDownload;
+                };
+            } catch {}
+            diagLog('checkBundle patched (skip hashing, existence-only)');
         }
 
         const launcher = new Launch();
@@ -508,6 +536,13 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         diagLog('launcher.Launch START');
         await launcher.Launch(launchOptions);
         diagLog('launcher.Launch DONE (background start() running)');
+
+        // Restore original checkBundle so future 1st-instance launches work normally
+        if (origCheckBundle) {
+            try {
+                require('minecraft-java-core/build/Minecraft/Minecraft-Bundle.js').default.prototype.checkBundle = origCheckBundle;
+            } catch {}
+        }
 
         // Track this instance
         activeInstances.set(instanceId, { launcher, modsGuard: instanceModsGuard, dllGuard: null });
