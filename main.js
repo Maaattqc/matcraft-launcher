@@ -10,6 +10,20 @@ try {
     fs = require('fs');
     crypto = require('crypto');
     ({ Launch, AZauth } = require('minecraft-java-core'));
+    // Patch getFileHash to prevent hangs on Windows locked files.
+    // The library's implementation has no error handler and no reject,
+    // so createReadStream on a locked file (e.g., native DLLs used by a running game)
+    // causes the promise to hang forever.
+    try {
+        const mjcUtils = require('minecraft-java-core/build/utils/Index.js');
+        const _origGetFileHash = mjcUtils.getFileHash;
+        mjcUtils.getFileHash = async function(filePath, algorithm) {
+            return Promise.race([
+                _origGetFileHash(filePath, algorithm),
+                new Promise((_, reject) => setTimeout(() => reject(new Error(`Hash timeout: ${filePath}`)), 5000))
+            ]).catch(() => null);
+        };
+    } catch (_) {}
     ({ syncMods, syncConfigs, createModsGuard, verifyFabricLoader } = require('./lib/syncMods'));
     ({ snapshotJavawPids, findNewPid, createDllGuard, createBlacklistGuard } = require('./lib/dllGuard'));
 } catch (err) {
@@ -337,6 +351,20 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
 
         const launcher = new Launch();
 
+        // Monkey-patch start() — the library calls it without await/catch,
+        // so any rejection is silently swallowed. Wrap it to surface errors.
+        const originalStart = launcher.start;
+        launcher.start = async function() {
+            try {
+                diagLog('background start() BEGIN');
+                await originalStart.call(this);
+                diagLog('background start() END (game spawned)');
+            } catch (err) {
+                diagLog(`background start() THREW: ${err?.message || err}`);
+                this.emit('error', { error: String(err?.message || err) });
+            }
+        };
+
         // Forward events to renderer (tagged with instanceId)
         launcher.on('progress', (progress, size, element) => {
             mainWindow?.webContents.send('launch:progress', progress, size, element, instanceId);
@@ -359,10 +387,12 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         });
 
         let firstData = true;
+        let hangTimer = null;
         launcher.on('data', (line) => {
             if (firstData) {
                 diagLog('game FIRST DATA received');
                 firstData = false;
+                if (hangTimer) clearTimeout(hangTimer);
             }
             mainWindow?.webContents.send('launch:data', String(line), instanceId);
         });
@@ -371,6 +401,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
 
         launcher.on('close', () => {
             diagLog('game CLOSED');
+            if (hangTimer) clearTimeout(hangTimer);
             gameClosed = true;
             const inst = activeInstances.get(instanceId);
             if (inst?.dllGuard) { inst.dllGuard.stop(); }
@@ -394,6 +425,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
 
         launcher.on('error', (err) => {
             diagLog(`game ERROR: ${err}`);
+            if (hangTimer) clearTimeout(hangTimer);
             if (gameClosed) return;
             mainWindow?.webContents.send('launch:error', String(err).slice(0, 500), instanceId);
         });
@@ -453,10 +485,19 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
 
         diagLog('launcher.Launch START');
         await launcher.Launch(launchOptions);
-        diagLog('launcher.Launch DONE');
+        diagLog('launcher.Launch DONE (background start() running)');
 
         // Track this instance
         activeInstances.set(instanceId, { launcher, modsGuard: instanceModsGuard, dllGuard: null });
+
+        // Hang detection: if no data event within 120s, the background start() is stuck
+        hangTimer = setTimeout(() => {
+            if (firstData) {
+                diagLog('HANG DETECTED: no game data after 120s — start() may be stuck');
+                mainWindow?.webContents.send('launch:error',
+                    'Le jeu ne répond pas après 2 minutes. Essayez de relancer.', instanceId);
+            }
+        }, 120_000);
 
         // Start anti-cheat guard after launch
         if (pidsBefore && findNewPid) {
