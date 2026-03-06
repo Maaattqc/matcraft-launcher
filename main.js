@@ -358,13 +358,19 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             mainWindow?.webContents.send('launch:patch', patchName, instanceId);
         });
 
+        let firstData = true;
         launcher.on('data', (line) => {
+            if (firstData) {
+                diagLog('game FIRST DATA received');
+                firstData = false;
+            }
             mainWindow?.webContents.send('launch:data', String(line), instanceId);
         });
 
         let gameClosed = false;
 
         launcher.on('close', () => {
+            diagLog('game CLOSED');
             gameClosed = true;
             const inst = activeInstances.get(instanceId);
             if (inst?.dllGuard) { inst.dllGuard.stop(); }
@@ -387,6 +393,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         });
 
         launcher.on('error', (err) => {
+            diagLog(`game ERROR: ${err}`);
             if (gameClosed) return;
             mainWindow?.webContents.send('launch:error', String(err).slice(0, 500), instanceId);
         });
@@ -407,7 +414,7 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             java: {
                 version: '21'
             },
-            verify: true,
+            verify: isFirstInstance,
             ignored: [
                 'mods',
                 'config',
