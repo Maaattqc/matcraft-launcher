@@ -23,21 +23,23 @@ import time
 import tempfile
 import textwrap
 import re
-
-HOST = "147.135.138.58"
-PORT = 22
-USER = "debian"
-PASSWORD = "NNFjZ3enYfj4OyC3"
+from dotenv import load_dotenv
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+load_dotenv(os.path.join(PROJECT_DIR, ".env"))
+
+HOST = os.environ["SERVER_HOST"]
+PORT = int(os.environ["SERVER_PORT"])
+USER = os.environ["SERVER_USERNAME"]
+PASSWORD = os.environ["SERVER_PASSWORD"]
+PANEL_USER = os.environ["PANEL_USER"]
+PANEL_PASSWORD = os.environ["PANEL_PASSWORD"]
+
 PANEL_DIR = os.path.join(PROJECT_DIR, "panel")
 
-PANEL_USER = "admin"
-PANEL_PASSWORD = "123minecraft123$$"
-
-MC_BASE = "/home/debian/minecraft"
-PANEL_REMOTE = "/home/debian/panel"
+MC_BASE = "/home/debian/minecraft/server"
+PANEL_REMOTE = "/home/debian/minecraft/panel"
 
 
 def run(ssh, cmd, sudo=False, timeout=120, allow_fail=False):
@@ -310,8 +312,8 @@ def main():
         [Service]
         User=debian
         Group=debian
-        WorkingDirectory=/home/debian/panel
-        ExecStart=/home/debian/panel/node_modules/.bin/tsx server.ts
+        WorkingDirectory=/home/debian/minecraft/panel
+        ExecStart=/home/debian/minecraft/panel/node_modules/.bin/tsx server.ts
         Restart=on-failure
         RestartSec=5
         Environment=NODE_ENV=production
@@ -576,7 +578,7 @@ def main():
     print("=" * 50)
     print("  DEPLOY OK!")
     print(f"  URL: https://panel.matcraft-mc.com")
-    print(f"  Login: {PANEL_USER} / {PANEL_PASSWORD}")
+    print(f"  Login: {PANEL_USER} / ****")
     print(f"  Architecture: Cloudflare -> nginx :8082 -> Panel :3847")
     print(f"  Servers migrated: {len(servers)} (systemd)")
     print("=" * 50)

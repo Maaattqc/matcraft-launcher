@@ -17,13 +17,17 @@ import paramiko
 import os
 import sys
 import tempfile
-
-HOST = "147.135.138.58"
-PORT = 22
-USER = "debian"
-PASSWORD = "NNFjZ3enYfj4OyC3"
+from dotenv import load_dotenv
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+load_dotenv(os.path.join(PROJECT_DIR, ".env"))
+
+HOST = os.environ["SERVER_HOST"]
+PORT = int(os.environ["SERVER_PORT"])
+USER = os.environ["SERVER_USERNAME"]
+PASSWORD = os.environ["SERVER_PASSWORD"]
+
 BRANDING_DIR = os.path.join(SCRIPT_DIR, "filebrowser-branding")
 
 
@@ -98,7 +102,7 @@ def main():
 
     # Transfer ownership of config and data directories
     run(ssh, "chown -R filebrowser:filebrowser /etc/filebrowser/", sudo=True)
-    run(ssh, "chown -R filebrowser:filebrowser /home/debian/minecraft/test/", sudo=True)
+    run(ssh, "chown -R filebrowser:filebrowser /home/debian/minecraft/server/test/", sudo=True)
 
     # Write updated systemd service
     service_unit = """\

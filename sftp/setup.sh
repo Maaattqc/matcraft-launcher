@@ -2,12 +2,19 @@
 set -e
 
 # Setup script for FileBrowser + nginx (theme injection) + Cloudflare Tunnel
-# Provides web file access to /home/debian/minecraft/test via sftp.matcraft-mc.com
+# Provides web file access to /home/debian/minecraft/server/test via sftp.matcraft-mc.com
 # Run with sudo on the target Debian server
 #
 # Requires: scripts/filebrowser-branding/ directory next to this script
 #   - custom.css      (MatCraft dark/light theme)
 #   - theme-toggle.js (dark mode toggle button)
+#
+# Set FILEBROWSER_PASSWORD env var before running, or you will be prompted.
+
+if [ -z "$FILEBROWSER_PASSWORD" ]; then
+  read -s -p "FileBrowser password for user 'dev': " FILEBROWSER_PASSWORD
+  echo
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -19,14 +26,14 @@ mkdir -p /etc/filebrowser
 filebrowser config init --database /etc/filebrowser/filebrowser.db
 filebrowser config set \
   --database /etc/filebrowser/filebrowser.db \
-  --root /home/debian/minecraft/test \
+  --root /home/debian/minecraft/server/test \
   --address 127.0.0.1 \
   --port 8081 \
   --locale fr \
   --branding.name "MatCraft Files" \
   --branding.files /etc/filebrowser/branding
 # Note: FileBrowser requires min 12 char passwords
-filebrowser users add dev 'devdev123456$' \
+filebrowser users add dev "$FILEBROWSER_PASSWORD" \
   --database /etc/filebrowser/filebrowser.db \
   --perm.admin \
   --locale fr
@@ -166,8 +173,8 @@ echo "========================================"
 echo "  TERMINE !"
 echo "  URL    : https://sftp.matcraft-mc.com"
 echo "  User   : dev"
-echo "  Mot de passe : devdev123456\$"
-echo "  Dossier: /home/debian/minecraft/test"
+echo "  Mot de passe : ****"
+echo "  Dossier: /home/debian/minecraft/server/test"
 echo ""
 echo "  Architecture:"
 echo "    Cloudflare Tunnel -> nginx :8080 -> FileBrowser :8081"

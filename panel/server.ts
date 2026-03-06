@@ -271,7 +271,7 @@ declare module 'express-session' {
 // ---------------------------------------------------------------------------
 
 const PORT = 3847;
-const MC_BASE = '/home/debian/minecraft';
+const MC_BASE = '/home/debian/minecraft/server';
 const FILEBROWSER_URL = 'http://127.0.0.1:8081';
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 
@@ -811,6 +811,9 @@ async function getEnrichedServers(): Promise<EnrichedServer[]> {
     return cachedEnriched;
   }
 
+  // Re-discover servers from disk on each cache refresh
+  refreshServerList();
+
   const services = serverList.map(s => s.service);
 
   // 2 batch systemctl calls + all pings in parallel (skip Velocity — no SLP response)
@@ -923,8 +926,8 @@ const httpServer = http.createServer(app);
 // Trust nginx/Cloudflare proxy — required for secure cookies behind reverse proxy
 app.set('trust proxy', 1);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 
 // Security headers
 app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -1129,7 +1132,8 @@ app.get('/api/servers/:name/players', requireAuth, async (req: Request, res: Res
     const resp = await rcon.send('list');
     res.json({ players: parsePlayerList(resp) });
   } catch (err) {
-    res.status(500).json({ error: 'RCON error: ' + (err as Error).message });
+    console.error('RCON error:', (err as Error).message);
+    res.status(500).json({ error: 'RCON error' });
   }
 });
 
@@ -1154,7 +1158,8 @@ app.post('/api/servers/:name/kick', requireAuth, requireAction('kick'), async (r
     console.log(`[ACTION] ${username} kicked ${player} from ${srv.name}`);
     res.json({ ok: true, response: resp });
   } catch (err) {
-    res.status(500).json({ error: 'RCON error: ' + (err as Error).message });
+    console.error('RCON error:', (err as Error).message);
+    res.status(500).json({ error: 'RCON error' });
   }
 });
 
@@ -1179,7 +1184,8 @@ app.post('/api/servers/:name/ban', requireAuth, requireAction('ban'), async (req
     console.log(`[ACTION] ${username} banned ${player} from ${srv.name}`);
     res.json({ ok: true, response: resp });
   } catch (err) {
-    res.status(500).json({ error: 'RCON error: ' + (err as Error).message });
+    console.error('RCON error:', (err as Error).message);
+    res.status(500).json({ error: 'RCON error' });
   }
 });
 
