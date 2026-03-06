@@ -349,6 +349,28 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             skipInitialVerify: !isFirstInstance
         });
 
+        // For non-first instances, find existing Java executable to skip runtime
+        // verification entirely — avoids EBUSY on locked DLLs (java.dll etc.)
+        let javaPath = null;
+        if (!isFirstInstance) {
+            const runtimeDir = path.join(GAME_DIR, 'runtime');
+            try {
+                for (const jreVer of fs.readdirSync(runtimeDir)) {
+                    const jreDir = path.join(runtimeDir, jreVer);
+                    if (!fs.statSync(jreDir).isDirectory()) continue;
+                    for (const platform of fs.readdirSync(jreDir)) {
+                        const candidate = path.join(jreDir, platform, 'bin', process.platform === 'win32' ? 'javaw.exe' : 'java');
+                        if (fs.existsSync(candidate)) {
+                            javaPath = candidate;
+                            break;
+                        }
+                    }
+                    if (javaPath) break;
+                }
+            } catch {}
+            diagLog(javaPath ? `Using existing Java: ${javaPath}` : 'WARNING: could not find existing Java');
+        }
+
         const launcher = new Launch();
 
         // Monkey-patch start() — the library calls it without await/catch,
@@ -443,9 +465,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
                 enable: true,
                 build: '0.18.4'
             },
-            java: {
-                version: '21'
-            },
+            java: javaPath
+                ? { path: javaPath }
+                : { version: '21' },
             verify: isFirstInstance,
             ignored: [
                 'mods',
