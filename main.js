@@ -292,7 +292,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
 
         // Check if another launcher process already has a game running
         const lockFile = path.join(GAME_DIR, '.matcraft.lock');
-        const isFirstInstance = !fs.existsSync(lockFile);
+        const lockFileExists = fs.existsSync(lockFile);
+        const isFirstInstance = !lockFileExists;
+        console.log(`[launch][${instanceId}] START isFirstInstance=${isFirstInstance} lockFileExists=${lockFileExists}`);
 
         // Sync mods with server manifest (anti-cheat)
         // Non-first instances skip hashing to avoid blocking on Windows file locks
@@ -300,17 +302,22 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         const sendSyncProgress = (phase, current, total, modName) => {
             mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName, instanceId });
         };
+        console.log(`[launch][${instanceId}] syncMods START (skipVerify=${!isFirstInstance})`);
         const allowedMods = await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress, {
             skipVerify: !isFirstInstance
         });
+        console.log(`[launch][${instanceId}] syncMods DONE`);
 
         // Sync FancyMenu configs from server
+        console.log(`[launch][${instanceId}] syncConfigs START`);
         await syncConfigs(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
+        console.log(`[launch][${instanceId}] syncConfigs DONE`);
 
         // Start watching the mods directory for unauthorized changes
         // All instances get a watcher; only the first does the initial hash verify
         // (subsequent instances skip it to avoid blocking on Windows file locks)
         const modsDir = path.join(GAME_DIR, 'mods');
+        console.log(`[launch][${instanceId}] createModsGuard (skipInitialVerify=${!isFirstInstance})`);
         instanceModsGuard = createModsGuard(modsDir, allowedMods, {
             skipInitialVerify: !isFirstInstance
         });
@@ -410,8 +417,12 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         // Final integrity check right before launching
         // Skip if another launcher already verified — files may be locked by Java on Windows
         if (isFirstInstance) {
+            console.log(`[launch][${instanceId}] pre-launch verify START`);
             await instanceModsGuard.verify();
             await verifyFabricLoader(GAME_DIR);
+            console.log(`[launch][${instanceId}] pre-launch verify DONE`);
+        } else {
+            console.log(`[launch][${instanceId}] pre-launch verify SKIPPED (not first instance)`);
         }
 
         // Snapshot java PIDs before launch (cross-platform)
@@ -420,7 +431,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             pidsBefore = await snapshotJavawPids();
         }
 
+        console.log(`[launch][${instanceId}] launcher.Launch START`);
         await launcher.Launch(launchOptions);
+        console.log(`[launch][${instanceId}] launcher.Launch DONE`);
 
         // Create lock file so other launcher processes know a game is running
         try { fs.writeFileSync(lockFile, instanceId); } catch {}
