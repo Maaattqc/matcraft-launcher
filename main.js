@@ -290,19 +290,22 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             fs.mkdirSync(GAME_DIR, { recursive: true });
         }
 
+        // Check if another launcher process already has a game running
+        const lockFile = path.join(GAME_DIR, '.matcraft.lock');
+        const isFirstInstance = !fs.existsSync(lockFile);
+
         // Sync mods with server manifest (anti-cheat)
+        // Non-first instances skip hashing to avoid blocking on Windows file locks
         const MODS_BASE_URL = `${AZAUTH_URL}/launcher`;
         const sendSyncProgress = (phase, current, total, modName) => {
             mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName, instanceId });
         };
-        const allowedMods = await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
+        const allowedMods = await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress, {
+            skipVerify: !isFirstInstance
+        });
 
         // Sync FancyMenu configs from server
         await syncConfigs(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
-
-        // Check if another launcher process already has a game running
-        const lockFile = path.join(GAME_DIR, '.matcraft.lock');
-        const isFirstInstance = !fs.existsSync(lockFile);
 
         // Start watching the mods directory for unauthorized changes
         // All instances get a watcher; only the first does the initial hash verify
