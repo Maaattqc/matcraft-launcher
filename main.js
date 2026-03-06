@@ -290,11 +290,18 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             fs.mkdirSync(GAME_DIR, { recursive: true });
         }
 
+        // Diagnostic logger: sends to both Node console and launcher UI console panel
+        const diagLog = (msg) => {
+            const line = `[diag] ${msg}`;
+            console.log(line);
+            mainWindow?.webContents.send('launch:data', line, instanceId);
+        };
+
         // Check if another launcher process already has a game running
         const lockFile = path.join(GAME_DIR, '.matcraft.lock');
         const lockFileExists = fs.existsSync(lockFile);
         const isFirstInstance = !lockFileExists;
-        console.log(`[launch][${instanceId}] START isFirstInstance=${isFirstInstance} lockFileExists=${lockFileExists}`);
+        diagLog(`START isFirstInstance=${isFirstInstance} lockFileExists=${lockFileExists}`);
 
         // Sync mods with server manifest (anti-cheat)
         // Non-first instances skip hashing to avoid blocking on Windows file locks
@@ -302,22 +309,22 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         const sendSyncProgress = (phase, current, total, modName) => {
             mainWindow?.webContents.send('launch:sync-progress', { phase, current, total, modName, instanceId });
         };
-        console.log(`[launch][${instanceId}] syncMods START (skipVerify=${!isFirstInstance})`);
+        diagLog(`syncMods START (skipVerify=${!isFirstInstance})`);
         const allowedMods = await syncMods(GAME_DIR, MODS_BASE_URL, sendSyncProgress, {
             skipVerify: !isFirstInstance
         });
-        console.log(`[launch][${instanceId}] syncMods DONE`);
+        diagLog('syncMods DONE');
 
         // Sync FancyMenu configs from server
-        console.log(`[launch][${instanceId}] syncConfigs START`);
+        diagLog('syncConfigs START');
         await syncConfigs(GAME_DIR, MODS_BASE_URL, sendSyncProgress);
-        console.log(`[launch][${instanceId}] syncConfigs DONE`);
+        diagLog('syncConfigs DONE');
 
         // Start watching the mods directory for unauthorized changes
         // All instances get a watcher; only the first does the initial hash verify
         // (subsequent instances skip it to avoid blocking on Windows file locks)
         const modsDir = path.join(GAME_DIR, 'mods');
-        console.log(`[launch][${instanceId}] createModsGuard (skipInitialVerify=${!isFirstInstance})`);
+        diagLog(`createModsGuard (skipInitialVerify=${!isFirstInstance})`);
         instanceModsGuard = createModsGuard(modsDir, allowedMods, {
             skipInitialVerify: !isFirstInstance
         });
@@ -417,12 +424,12 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         // Final integrity check right before launching
         // Skip if another launcher already verified — files may be locked by Java on Windows
         if (isFirstInstance) {
-            console.log(`[launch][${instanceId}] pre-launch verify START`);
+            diagLog('pre-launch verify START');
             await instanceModsGuard.verify();
             await verifyFabricLoader(GAME_DIR);
-            console.log(`[launch][${instanceId}] pre-launch verify DONE`);
+            diagLog('pre-launch verify DONE');
         } else {
-            console.log(`[launch][${instanceId}] pre-launch verify SKIPPED (not first instance)`);
+            diagLog('pre-launch verify SKIPPED (not first instance)');
         }
 
         // Snapshot java PIDs before launch (cross-platform)
@@ -431,9 +438,9 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
             pidsBefore = await snapshotJavawPids();
         }
 
-        console.log(`[launch][${instanceId}] launcher.Launch START`);
+        diagLog('launcher.Launch START');
         await launcher.Launch(launchOptions);
-        console.log(`[launch][${instanceId}] launcher.Launch DONE`);
+        diagLog('launcher.Launch DONE');
 
         // Create lock file so other launcher processes know a game is running
         try { fs.writeFileSync(lockFile, instanceId); } catch {}
