@@ -300,8 +300,14 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         // Check if another launcher process already has a game running
         const lockFile = path.join(GAME_DIR, '.matcraft.lock');
         const lockFileExists = fs.existsSync(lockFile);
-        const isFirstInstance = !lockFileExists;
-        diagLog(`START isFirstInstance=${isFirstInstance} lockFileExists=${lockFileExists}`);
+        const isFirstInstance = !lockFileExists && activeInstances.size === 0;
+        diagLog(`START isFirstInstance=${isFirstInstance} lockFileExists=${lockFileExists} activeInstances=${activeInstances.size}`);
+
+        // Write lock file immediately so other launches (including same process)
+        // know to skip heavy verification
+        if (isFirstInstance) {
+            try { fs.writeFileSync(lockFile, instanceId); } catch {}
+        }
 
         // Sync mods with server manifest (anti-cheat)
         // Non-first instances skip hashing to avoid blocking on Windows file locks
@@ -441,9 +447,6 @@ ipcMain.handle('minecraft:launch', async (_event, config) => {
         diagLog('launcher.Launch START');
         await launcher.Launch(launchOptions);
         diagLog('launcher.Launch DONE');
-
-        // Create lock file so other launcher processes know a game is running
-        try { fs.writeFileSync(lockFile, instanceId); } catch {}
 
         // Track this instance
         activeInstances.set(instanceId, { launcher, modsGuard: instanceModsGuard, dllGuard: null });
