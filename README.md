@@ -6,6 +6,7 @@
 
 ## Preview
 
+![Auto-updater](docs/screenshot-updater.jpg)
 ![Login Screen](docs/screenshot-login.jpg)
 ![Launcher](docs/screenshot-launcher.jpg)
 ![Settings](docs/screenshot-settings.jpg)
