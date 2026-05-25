@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+const isBypass = process.argv.includes('--bypass-auth') || process.env.MATCRAFT_DEV_BYPASS === '1';
+
 contextBridge.exposeInMainWorld('launcher', {
+    // Dev bypass flag
+    isBypass,
     // Auth
     login: (email, password) => ipcRenderer.invoke('azauth:login', email, password),
 
