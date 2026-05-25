@@ -110,7 +110,11 @@ function createWindow() {
 }
 
 function setupAutoUpdater() {
-    if (!app.isPackaged) return;
+    // In dev (not packaged) or bypass mode — skip updater entirely, go straight to login
+    if (!app.isPackaged || process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth')) {
+        setTimeout(() => mainWindow?.webContents.send('updater:not-available'), 200);
+        return;
+    }
 
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = false;
@@ -143,12 +147,7 @@ function setupAutoUpdater() {
         mainWindow?.webContents.send('updater:error', err.message);
     });
 
-    // Skip updater in bypass/dev mode
-    if (process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth')) {
-        mainWindow?.webContents.send('updater:not-available');
-    } else {
-        autoUpdater.checkForUpdates();
-    }
+    autoUpdater.checkForUpdates();
 }
 
 app.whenReady().then(() => {
