@@ -8,6 +8,7 @@
 
 ![Login Screen](docs/screenshot-login.jpg)
 ![Launcher](docs/screenshot-launcher.jpg)
+![Settings](docs/screenshot-settings.jpg)
 
 ## 🚀 Overview / Aperçu
 
