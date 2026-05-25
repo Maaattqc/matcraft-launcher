@@ -52,10 +52,10 @@ export default function App() {
       }),
     ]
 
-    // Timeout: if no updater event after 5s, assume no update (dev/packaged without update)
+    // Timeout: if no updater event after 3s, skip update screen (dev/no update server)
     const timeout = setTimeout(() => {
-      setUpdateStatus(prev => prev === 'checking' ? 'none' : prev)
-    }, 5000)
+      setUpdateStatus(prev => (prev === 'checking' || prev === 'downloading') ? 'none' : prev)
+    }, 3000)
 
     return () => {
       clearTimeout(timeout)

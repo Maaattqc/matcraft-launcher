@@ -143,7 +143,12 @@ function setupAutoUpdater() {
         mainWindow?.webContents.send('updater:error', err.message);
     });
 
-    autoUpdater.checkForUpdates();
+    // Skip updater in bypass/dev mode
+    if (process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth')) {
+        mainWindow?.webContents.send('updater:not-available');
+    } else {
+        autoUpdater.checkForUpdates();
+    }
 }
 
 app.whenReady().then(() => {
