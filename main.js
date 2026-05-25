@@ -86,11 +86,19 @@ function createWindow() {
 
     const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
 
+    const isBypass = process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth');
+
     // Dev: load Vite dev server; Prod: load built files
     if (isDev) {
-        mainWindow.loadURL('http://localhost:5173');
+        const devUrl = isBypass ? 'http://localhost:5173?bypass=1' : 'http://localhost:5173';
+        mainWindow.loadURL(devUrl);
     } else {
         mainWindow.loadFile(path.join(__dirname, 'renderer', 'dist', 'index.html'));
+        if (isBypass) {
+            mainWindow.webContents.once('did-finish-load', () => {
+                mainWindow.webContents.executeJavaScript('window.__MATCRAFT_BYPASS__ = true');
+            });
+        }
     }
 
     // Disable DevTools in production

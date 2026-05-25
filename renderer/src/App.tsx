@@ -15,14 +15,21 @@ interface User {
 type View = 'home' | 'settings'
 type UpdateStatus = 'checking' | 'downloading' | 'downloaded' | 'none' | 'error'
 
+const DEV_BYPASS = typeof window !== 'undefined' &&
+  (window.location.search.includes('bypass') || (window as any).__MATCRAFT_BYPASS__)
+
 export default function App() {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(
+    DEV_BYPASS ? { username: 'DevPlayer', uuid: '00000000-0000-0000-0000-000000000001' } : null
+  )
   const [currentView, setCurrentView] = useState<View>('home')
   const [maxRam, setMaxRam] = useState('4G')
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('checking')
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>(DEV_BYPASS ? 'none' : 'checking')
   const [updateProgress, setUpdateProgress] = useState(0)
 
   useEffect(() => {
+    if (DEV_BYPASS) return
+
     // In dev, the updater never fires — go straight to login
     if (!window.launcher.onUpdaterChecking) {
       setUpdateStatus('none')
