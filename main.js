@@ -86,7 +86,7 @@ function createWindow() {
 
     const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
 
-    const isBypass = process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth');
+    const isBypass = process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth') || process.argv.includes('--dev');
 
     // Dev: load Vite dev server; Prod: load built files
     if (isDev) {
@@ -235,8 +235,8 @@ ipcMain.handle('azauth:login', async (_event, email, password) => {
         return { success: false, error: 'Entrée trop longue.' };
     }
 
-    // ── DEV BYPASS ── set env var MATCRAFT_DEV_BYPASS=1 to skip auth
-    if (process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth')) {
+    // ── DEV BYPASS ── skip auth in dev/bypass mode
+    if (process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth') || process.argv.includes('--dev')) {
         authenticatorData = {
             name: email.split('@')[0] || 'DevPlayer',
             uuid: '00000000-0000-0000-0000-000000000001',
