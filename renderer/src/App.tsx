@@ -18,13 +18,19 @@ type UpdateStatus = 'checking' | 'downloading' | 'downloaded' | 'none' | 'error'
 export default function App() {
   const isBypass = (window as any).launcher?.isBypass === true
 
-  const [user, setUser] = useState<User | null>(
-    isBypass ? { username: 'DevPlayer', uuid: '00000000-0000-0000-0000-000000000001' } : null
-  )
+  const [user, setUser] = useState<User | null>(null)
   const [currentView, setCurrentView] = useState<View>('home')
   const [maxRam, setMaxRam] = useState('4G')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>(isBypass ? 'none' : 'checking')
   const [updateProgress, setUpdateProgress] = useState(0)
+
+  // Auto-login in bypass mode — call resizeToLauncher like normal login flow
+  useEffect(() => {
+    if (isBypass) {
+      window.launcher.resizeToLauncher?.()
+      setUser({ username: 'DevPlayer', uuid: '00000000-0000-0000-0000-000000000001' })
+    }
+  }, [isBypass])
 
   useEffect(() => {
     if (isBypass) return
