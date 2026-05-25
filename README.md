@@ -4,6 +4,10 @@
 >
 > Launcher desktop Electron sur mesure pour le serveur Minecraft MatCraft — authentification, mises à jour automatiques et gestion des mods.
 
+## Preview
+
+![Login Screen](docs/screenshot-login.jpg)
+
 ## 🚀 Overview / Aperçu
 
 **[EN]** A polished desktop application that handles player authentication via Azuriom, launches Minecraft 1.21.11 with Fabric and bundled mods, manages auto-updates, and provides a modern React-based UI. Built as a complete replacement for the default Minecraft launcher, tailored for the MatCraft community at matfaction.com.
