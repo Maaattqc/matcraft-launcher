@@ -223,6 +223,21 @@ ipcMain.handle('azauth:login', async (_event, email, password) => {
         return { success: false, error: 'Entrée trop longue.' };
     }
 
+    // ── DEV BYPASS ── set env var MATCRAFT_DEV_BYPASS=1 to skip auth
+    if (process.env.MATCRAFT_DEV_BYPASS === '1' || process.argv.includes('--bypass-auth')) {
+        authenticatorData = {
+            name: email.split('@')[0] || 'DevPlayer',
+            uuid: '00000000-0000-0000-0000-000000000001',
+            access_token: 'dev_token',
+            user_properties: '{}',
+            meta: { online: false, type: 'AZauth' }
+        };
+        return {
+            success: true,
+            user: { username: authenticatorData.name, uuid: authenticatorData.uuid }
+        };
+    }
+
     try {
         const azauth = new AZauth(AZAUTH_URL);
         const result = await azauth.login(email, password);
