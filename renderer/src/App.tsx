@@ -5,7 +5,6 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { LoginView } from '@/components/login/LoginView'
 import { MainView } from '@/components/main/MainView'
 import { SettingsView } from '@/components/settings/SettingsView'
-import { UpdateScreen } from '@/components/update/UpdateScreen'
 
 interface User {
   username: string
@@ -13,65 +12,18 @@ interface User {
 }
 
 type View = 'home' | 'settings'
-type UpdateStatus = 'checking' | 'downloading' | 'downloaded' | 'none' | 'error'
 
 export default function App() {
-  const isBypass = (window as any).launcher?.isBypass === true
-
   const [user, setUser] = useState<User | null>(null)
   const [currentView, setCurrentView] = useState<View>('home')
   const [maxRam, setMaxRam] = useState('4G')
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>(isBypass ? 'none' : 'checking')
-  const [updateProgress, setUpdateProgress] = useState(0)
 
-  // Auto-login in bypass mode — call resizeToLauncher like normal login flow
+  // Auto-login in dev mode (--dev flag)
   useEffect(() => {
+    const isBypass = (window as any).launcher?.isBypass === true
     if (isBypass) {
       window.launcher.resizeToLauncher?.()
       setUser({ username: 'DevPlayer', uuid: '00000000-0000-0000-0000-000000000001' })
-    }
-  }, [isBypass])
-
-  useEffect(() => {
-    if (isBypass) return
-
-    // In dev, the updater never fires — go straight to login
-    if (!window.launcher.onUpdaterChecking) {
-      setUpdateStatus('none')
-      return
-    }
-
-    const cleanups = [
-      window.launcher.onUpdaterChecking(() => {
-        setUpdateStatus('checking')
-      }),
-      window.launcher.onUpdaterUpdateAvailable(() => {
-        setUpdateStatus('downloading')
-        setUpdateProgress(0)
-      }),
-      window.launcher.onUpdaterProgress((percent) => {
-        setUpdateProgress(Math.round(percent))
-      }),
-      window.launcher.onUpdaterDownloaded(() => {
-        setUpdateStatus('downloaded')
-        setUpdateProgress(100)
-      }),
-      window.launcher.onUpdaterNotAvailable(() => {
-        setUpdateStatus('none')
-      }),
-      window.launcher.onUpdaterError(() => {
-        setUpdateStatus('none')
-      }),
-    ]
-
-    // Timeout: if no updater event after 3s, skip update screen (dev/no update server)
-    const timeout = setTimeout(() => {
-      setUpdateStatus(prev => (prev === 'checking' || prev === 'downloading') ? 'none' : prev)
-    }, 3000)
-
-    return () => {
-      clearTimeout(timeout)
-      cleanups.forEach(fn => fn())
     }
   }, [])
 
@@ -91,12 +43,7 @@ export default function App() {
     setUser(null)
   }
 
-  // ── Update screen (blocking, before login) ──
-  if (updateStatus === 'checking' || updateStatus === 'downloading' || updateStatus === 'downloaded') {
-    return <UpdateScreen status={updateStatus} progress={updateProgress} />
-  }
-
-  // ── Login page (separate full-screen view, no sidebar) ──
+  // ── Login page ──
   if (!user) {
     return (
       <div className="h-screen w-screen overflow-hidden bg-black relative">
@@ -113,7 +60,7 @@ export default function App() {
     )
   }
 
-  // ── Launcher view (sidebar + background + main) ──
+  // ── Launcher view ──
   return (
     <div className="h-screen w-screen overflow-hidden bg-black relative">
       <div
