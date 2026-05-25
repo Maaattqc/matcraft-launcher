@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-const isBypass = process.argv.includes('--bypass-auth') || process.env.MATCRAFT_DEV_BYPASS === '1';
+const { app } = require('@electron/remote') || {};
+const isBypass = process.argv.includes('--bypass-auth') || 
+  process.env.MATCRAFT_DEV_BYPASS === '1' ||
+  process.argv.includes('--dev');
 
 contextBridge.exposeInMainWorld('launcher', {
     // Dev bypass flag
