@@ -153,7 +153,7 @@ The IPC contract (`window.launcher` API), the React UI, the auto-update pipeline
 
 ## Author
 
-**Mathieu Fournier** — [@Maaattqc](https://github.com/Maaattqc)
+**Mathieu Fournier** · mathieufournierqc@outlook.com — [@Maaattqc](https://github.com/Maaattqc)
 
 ---
 
