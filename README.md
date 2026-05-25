@@ -79,6 +79,14 @@ The architecture is designed to be **game-agnostic**: the same launcher framewor
 - Launch progress streamed to UI in real-time (download speed, ETA, extraction status)
 - RAM allocation selector + per-launch console output panel
 
+**Anti-Cheat Engine**
+- Real-time DLL injection detection — monitors all modules loaded into the game process via `tasklist.exe /M`
+- Baseline snapshot at launch: any new DLL appearing post-launch triggers a violation
+- Process blacklist scanner — detects CheatEngine, ProcessHacker, x64dbg, ArtMoney and others before and during gameplay
+- Cross-platform: full DLL guard on Windows, process-blacklist guard on macOS/Linux
+- Violation handler: terminates the game process instantly + reports violation type (`dll:<name>` or `blacklist:<process>`)
+- Pure Node.js — no external `.exe` required (optional C# worker for SHA-256 integrity hashing)
+
 **Developer Experience**
 - `npm run dev` — hot-reload Vite renderer + Electron in watch mode
 - `npm run dist` — full release build: renderer → obfuscate → `electron-builder --win`
